@@ -1,9 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
+  "name": "elisabeth-constantin-backend",
   "functions": {
-    "api/**/*.py": {
-      "runtime": "python3.12"
+    "api/*.py": {
+      "runtime": "python3.11",
+      "maxDuration": 30
     }
   }
 }
