@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "name": "elisabeth-constantin-backend",
+  "functions": {
+    "api/*.py": {
+      "runtime": "python3.11",
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/artworks/(.*)",
+      "dest": "/api/artworks"
+    },
+    {
+      "src": "/api/events/(.*)",
+      "dest": "/api/events"
+    },
+    {
+      "src": "/api/orders/(.*)",
+      "dest": "/api/orders"
+    },
+    {
+      "src": "/api/admin/(.*)",
+      "dest": "/api/admin"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index"
+    }
+  ]
+}
