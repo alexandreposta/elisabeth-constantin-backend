@@ -1,8 +1,5 @@
-fastapi
-uvicorn[standard]
 pymongo
 python-dotenv
-python-multipart
 stripe
 passlib[bcrypt]
 python-jose[cryptography]
