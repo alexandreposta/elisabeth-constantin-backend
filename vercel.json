@@ -3,7 +3,7 @@
   "name": "elisabeth-constantin-backend",
   "functions": {
     "api/*.py": {
-      "runtime": "python3.11",
+      "runtime": "python",
       "maxDuration": 30
     }
   },
