@@ -1,36 +1,24 @@
 {
-  "version": 2,
-  "name": "elisabeth-constantin-backend",
-  "functions": {
-    "api/*.py": {
-      "runtime": "python",
-      "maxDuration": 30
-    }
-  },
-  "routes": [
+  "builds": [
     {
-      "src": "/api/artworks/(.*)",
-      "dest": "/api/artworks"
+      "src": "api/index.py",
+      "use": "@vercel/python"
     },
     {
-      "src": "/api/events/(.*)",
-      "dest": "/api/events"
+      "src": "api/artworks.py",
+      "use": "@vercel/python"
     },
     {
-      "src": "/api/orders/(.*)",
-      "dest": "/api/orders"
+      "src": "api/events.py",
+      "use": "@vercel/python"
     },
     {
-      "src": "/api/admin/(.*)",
-      "dest": "/api/admin"
+      "src": "api/orders.py",
+      "use": "@vercel/python"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/api/index"
+      "src": "api/admin.py",
+      "use": "@vercel/python"
     }
   ]
 }
