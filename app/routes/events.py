@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from app.models.event import Event, EventInDB
 from app.crud.events import get_all_events, get_event_by_id, create_event, update_event, delete_event
+from app.auth_simple import verify_session
 from typing import List
 
 router = APIRouter()

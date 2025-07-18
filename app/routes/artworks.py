@@ -1,10 +1,11 @@
 # app/routes/artworks.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import List
 from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
 from app.crud import artworks
+from app.dependencies import require_admin_auth
 
-router = APIRouter(prefix="/artworks")
+router = APIRouter()
 
 
 def serialize_artwork(raw: dict) -> dict:

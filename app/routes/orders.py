@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 import stripe
 import os
 from app.models.order import Order, OrderInDB
 from app.crud.orders import create_order, get_order_by_id, update_order_status, get_all_orders, get_orders_by_email as get_orders_by_email_db
+from app.auth_simple import verify_session
 from typing import List
 import logging
 
