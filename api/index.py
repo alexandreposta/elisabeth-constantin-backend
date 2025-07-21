@@ -10,10 +10,12 @@ app = FastAPI(
 )
 
 # Configuration CORS
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 allowed_origins = [
     frontend_url,
-    "http://localhost:3000",
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",  # Si jamais vous utilisez un autre port
     "http://127.0.0.1:3000",
     "https://elisabeth-constantin.vercel.app",  # URL de production probable
 ]

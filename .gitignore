@@ -34,13 +34,17 @@ ENV/
 env.bak/
 venv.bak/
 .venv/
+.conda/
 
 # Vercel
 .vercel
+.vercel.json
 
 # Logs
 *.log
 logs/
+pip-log.txt
+pip-delete-this-directory.txt
 
 # IDE & Editors
 .vscode/
@@ -48,6 +52,8 @@ logs/
 *.swp
 *.swo
 *~
+.spyderproject
+.spyproject
 
 # OS generated files
 .DS_Store
@@ -66,38 +72,13 @@ dump/
 .coverage
 htmlcov/
 .pytest_cache/
-
-# Temporary files
-*.tmp
-*.temp
-
-# Logs
-*.log
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Temporary files
-*.tmp
-*.temp
-temp/
-tmp/
-
-# Coverage reports
-htmlcov/
 .tox/
-.coverage
 .coverage.*
 .cache
 nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
-.pytest_cache/
 
 # mypy
 .mypy_cache/
@@ -108,8 +89,51 @@ dmypy.json
 *.bak
 *.backup
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
 # Node.js (if using for build tools)
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
+
+# FastAPI/Uvicorn
+*.pid
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# Pyre type checker
+.pyre/

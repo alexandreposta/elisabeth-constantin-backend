@@ -1,0 +1,10 @@
+{
+  "name": "site-maman-backend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "uvicorn api.index:app --reload --host 0.0.0.0 --port 8000",
+    "start": "uvicorn api.index:app --host 0.0.0.0 --port 8000"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
