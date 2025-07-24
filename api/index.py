@@ -36,12 +36,11 @@ async def log_requests(request: Request, call_next):
     return response
 
 # Configuration CORS
-frontend_url = os.getenv("FRONTEND_URL_VERCEL")
+frontend_url = os.getenv("FRONTEND_URL")
 allowed_origins = [
     frontend_url,
-    "http://localhost:5173",
-    "http://127.0.0.1:5173"
 ]
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +52,7 @@ app.add_middleware(
 
 # Configuration d'authentification simple pour le développement local
 logger.info("🔄 Configuration de l'authentification simple (sans MongoDB)...")
+logger.info(f"🌐🌐🌐🌐🌐🌐🌐🌐🌐🌐🌐🌐 CORS configuré pour: {allowed_origins}")
 
 import os
 from datetime import datetime, timedelta
