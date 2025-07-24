@@ -15,12 +15,11 @@ from app.auth_simple import verify_session
 app = FastAPI()
 
 # Configuration CORS
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+frontend_url = os.getenv("FRONTEND_URL_VERCEL")
 allowed_origins = [
     frontend_url,
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://elisabeth-constantin.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
 ]
 
 app.add_middleware(
