@@ -52,7 +52,6 @@ app.add_middleware(
 
 # Configuration d'authentification simple pour le développement local
 logger.info("🔄 Configuration de l'authentification simple (sans MongoDB)...")
-logger.info(f"🌐🌐🌐🌐🌐🌐🌐🌐🌐🌐🌐🌐 CORS configuré pour: {allowed_origins}")
 
 import os
 from datetime import datetime, timedelta
