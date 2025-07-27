@@ -155,3 +155,13 @@ def get_orders_by_email(email: str):
     """
     orders = get_orders_by_email_db(email)
     return [serialize_order(order) for order in orders]
+
+@app.get("/admin/all", response_model=List[dict])
+def get_admin_orders(request: Request):
+    """
+    Retourne toutes les commandes pour l'administration.
+    Endpoint spécifique pour le dashboard admin.
+    """
+    require_admin_auth(request)
+    orders = get_all_orders()
+    return [serialize_order(order) for order in orders]

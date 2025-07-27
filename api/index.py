@@ -268,15 +268,29 @@ async def dashboard_stats(request: Request):
         logger.error(f"❌ Erreur dans dashboard_stats: {e}")
         raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
 
-# Import des routes depuis app/routes/ (architecture propre)
-from app.routes.artworks import router as artworks_router
-from app.routes.events import router as events_router
-from app.routes.orders import router as orders_router
+# Import des sous-applications depuis le dossier api/
+import importlib.util
+import sys
+import os
 
-# Inclure les routers avec leur préfixe
-app.include_router(artworks_router, prefix="/api/artworks", tags=["artworks"])
-app.include_router(events_router, prefix="/api/events", tags=["events"])
-app.include_router(orders_router, prefix="/api/orders", tags=["orders"])
+def load_api_module(module_name):
+    """Charge dynamiquement un module API"""
+    module_path = os.path.join(os.path.dirname(__file__), f"{module_name}.py")
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[f"api.{module_name}"] = module
+    spec.loader.exec_module(module)
+    return module.app
+
+# Charger les sous-applications
+artworks_app = load_api_module("artworks")
+events_app = load_api_module("events") 
+orders_app = load_api_module("orders")
+
+# Monter les sous-applications avec leur préfixe
+app.mount("/api/artworks", artworks_app)
+app.mount("/api/events", events_app)
+app.mount("/api/orders", orders_app)
 
 # Log au démarrage
 logger.info("🟢 APPLICATION DÉMARRÉE - Endpoints disponibles:")
