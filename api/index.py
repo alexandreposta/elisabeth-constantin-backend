@@ -36,9 +36,16 @@ async def log_requests(request: Request, call_next):
     return response
 
 # Configuration CORS
-frontend_url = os.getenv("FRONTEND_URL")
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 allowed_origins = [
     frontend_url,
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",  # Si jamais vous utilisez un autre port
+    "http://127.0.0.1:3000",
+    "https://elisabeth-constantin.fr",  # Domaine de production
+    "https://www.elisabeth-constantin.fr",  # Avec www
+    "https://elisabeth-constantin.vercel.app",  # URL Vercel par défaut
 ]
 
 
