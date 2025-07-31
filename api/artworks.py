@@ -1,18 +1,10 @@
 from fastapi import APIRouter, HTTPException, Request
 from typing import List
-import sys
-import os
-
-# Ajouter le chemin parent pour les imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
 from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
 from app.crud import artworks
+from fastapi import Depends
 
-# Créer un router au lieu d'une app FastAPI
 router = APIRouter()
-
-# Configuration supprimée - CORS géré par l'application principale
 
 def serialize_artwork(raw: dict) -> dict:
     """
@@ -22,34 +14,23 @@ def serialize_artwork(raw: dict) -> dict:
     return {
         **raw,
         "_id": str(raw["_id"]),
-        # on veille à toujours avoir la clé other_images
         "other_images": raw.get("other_images", []),
     }
 
-def require_admin_auth(request: Request):
-    """Vérifier l'authentification admin - utilise le même système que index.py"""
+def require_admin_auth(request: Request = None):
     session_id = request.cookies.get("session_id")
     admin_token = request.cookies.get("admin_token")
-    
     if not session_id and not admin_token:
         raise HTTPException(status_code=401, detail="Authentification requise")
-    
-    # Si on a un admin_token (JWT), l'accepter temporairement
     if admin_token:
         return True
-    
-    # Si on a un session_id, utiliser le système simple
     if session_id:
-        # Pour simplifier, on accepte toute session_id non vide
-        # Plus tard on pourra intégrer avec le système de sessions d'index.py
         return True
-    
     raise HTTPException(status_code=401, detail="Session invalide")
 
 @router.get("/", response_model=List[ArtworkInDB])
 def list_artworks():
     raws = artworks.get_all_artworks()
-    # applique la sérialisation AVANT de passer au model
     serialized = [serialize_artwork(a) for a in raws]
     return serialized
 
@@ -62,7 +43,7 @@ def get_gallery_types():
     available_types = set()
     
     for artwork in artworks_data:
-        if artwork.get('is_available', True):  # Seulement les œuvres disponibles
+        if artwork.get('is_available', True):
             artwork_type = artwork.get('type', 'paint')
             available_types.add(artwork_type)
     
@@ -90,8 +71,7 @@ def get_artwork(artwork_id: str):
     return serialize_artwork(raw)
 
 @router.post("/", response_model=ArtworkInDB)
-def create_artwork(request: Request, artwork: Artwork):
-    require_admin_auth(request)
+def create_artwork(artwork: Artwork, _: bool = Depends(require_admin_auth), request: Request = None):
     created_id = artworks.create_artwork(artwork.dict())
     created_doc = artworks.get_artwork_by_id(created_id)
     if not created_doc:
@@ -99,31 +79,27 @@ def create_artwork(request: Request, artwork: Artwork):
     return serialize_artwork(created_doc)
 
 @router.put("/{artwork_id}", response_model=ArtworkInDB)
-def update_artwork(request: Request, artwork_id: str, artwork: Artwork):
-    require_admin_auth(request)
+def update_artwork(artwork_id: str, artwork: Artwork, _: bool = Depends(require_admin_auth), request: Request = None):
     modified_count = artworks.update_artwork(artwork_id, artwork.dict())
     if not modified_count:
         raise HTTPException(status_code=404, detail="Artwork not found or not modified")
-    # Récupérer le document mis à jour
     updated_doc = artworks.get_artwork_by_id(artwork_id)
     if not updated_doc:
         raise HTTPException(status_code=404, detail="Artwork not found after update")
     return serialize_artwork(updated_doc)
 
 @router.delete("/{artwork_id}")
-def delete_artwork(request: Request, artwork_id: str):
-    require_admin_auth(request)
+def delete_artwork(artwork_id: str, _: bool = Depends(require_admin_auth), request: Request = None):
     deleted = artworks.delete_artwork(artwork_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Artwork not found")
     return {"message": "Artwork deleted successfully"}
 
 @router.put("/update-type")
-def update_artwork_type(request: Request, type_request: UpdateTypeRequest):
+def update_artwork_type(type_request: UpdateTypeRequest, _: bool = Depends(require_admin_auth), request: Request = None):
     """
     Met à jour un type d'œuvre dans toutes les œuvres
     """
-    require_admin_auth(request)
     try:
         updated_count = artworks.update_artwork_type(type_request.oldType, type_request.newType)
         return {"success": True, "updated": updated_count}

@@ -1,20 +1,12 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
+from typing import List
 import stripe
 import sys
 import os
-from typing import List
-import logging
-
-# Ajouter le chemin parent pour les imports
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-
-from app.models.order import Order, OrderInDB
+from app.models.order import Order
 from app.crud.orders import create_order, get_order_by_id, update_order_status, get_all_orders, get_orders_by_email as get_orders_by_email_db
 
-# Créer un router au lieu d'une app FastAPI
 router = APIRouter()
-
-# Configuration CORS supprimée - gérée par l'application principale
 
 # Configuration Stripe
 stripe_secret_key = os.getenv("STRIPE_SECRET_KEY")
@@ -28,24 +20,15 @@ def serialize_order(raw: dict) -> dict:
     del raw["_id"]
     return raw
 
-def require_admin_auth(request: Request):
-    """Vérifier l'authentification admin - utilise le même système que index.py"""
+def require_admin_auth(request: Request = None):
     session_id = request.cookies.get("session_id")
     admin_token = request.cookies.get("admin_token")
-    
     if not session_id and not admin_token:
         raise HTTPException(status_code=401, detail="Authentification requise")
-    
-    # Si on a un admin_token (JWT), l'accepter temporairement
     if admin_token:
         return True
-    
-    # Si on a un session_id, utiliser le système simple
     if session_id:
-        # Pour simplifier, on accepte toute session_id non vide
-        # Plus tard on pourra intégrer avec le système de sessions d'index.py
         return True
-    
     raise HTTPException(status_code=401, detail="Session invalide")
 
 @router.post("/create-payment-intent")
@@ -73,7 +56,6 @@ async def create_payment_intent(order: Order):
             }
         )
         
-        # Sauvegarder la commande en DB avec l'ID Stripe
         order_data = order.dict()
         order_data['stripe_payment_intent_id'] = intent.id
         order_data['status'] = 'pending'
@@ -104,15 +86,12 @@ async def confirm_payment(payment_data: dict):
         if not payment_intent_id or not order_id:
             raise HTTPException(status_code=400, detail="Données de paiement incomplètes")
         
-        # Récupérer l'intention de paiement depuis Stripe
         intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         
         if intent.status == "succeeded":
-            # Mettre à jour le statut de la commande
             update_order_status(order_id, "paid")
             return {"status": "success", "message": "Paiement confirmé"}
         else:
-            # Mettre à jour le statut de la commande
             update_order_status(order_id, "failed")
             return {"status": "failed", "message": "Paiement échoué"}
             
@@ -122,11 +101,10 @@ async def confirm_payment(payment_data: dict):
         raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
 
 @router.get("/", response_model=List[dict])
-def list_orders(request: Request):
+def list_orders(_: bool = Depends(require_admin_auth), request: Request = None):
     """
     Retourne toutes les commandes (admin uniquement).
     """
-    require_admin_auth(request)
     orders = get_all_orders()
     return [serialize_order(order) for order in orders]
 
@@ -149,11 +127,10 @@ def get_orders_by_email(email: str):
     return [serialize_order(order) for order in orders]
 
 @router.get("/admin/all", response_model=List[dict])
-def get_admin_orders(request: Request):
+def get_admin_orders(_: bool = Depends(require_admin_auth), request: Request = None):
     """
     Retourne toutes les commandes pour l'administration.
     Endpoint spécifique pour le dashboard admin.
     """
-    require_admin_auth(request)
     orders = get_all_orders()
     return [serialize_order(order) for order in orders]
