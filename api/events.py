@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from typing import List
 import sys
 import os
@@ -9,8 +9,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from app.models.event import Event, EventInDB
 from app.crud.events import get_all_events, get_event_by_id, create_event, update_event, delete_event
 
-# Créer l'app FastAPI
-app = FastAPI()
+# Créer un router au lieu d'une app FastAPI
+router = APIRouter()
 
 # Configuration CORS supprimée - gérée par l'application principale
 
@@ -42,7 +42,7 @@ def require_admin_auth(request: Request):
     
     raise HTTPException(status_code=401, detail="Session invalide")
 
-@app.get("/", response_model=List[dict])
+@router.get("/", response_model=List[dict])
 def read_events():
     """
     Retourne la liste de tous les événements.
@@ -50,7 +50,7 @@ def read_events():
     events = get_all_events()
     return [serialize_event(event) for event in events]
 
-@app.get("/{event_id}", response_model=dict)
+@router.get("/{event_id}", response_model=dict)
 def read_event(event_id: str):
     """
     Retourne un événement par son ID.
@@ -60,7 +60,7 @@ def read_event(event_id: str):
         raise HTTPException(status_code=404, detail="Événement non trouvé")
     return serialize_event(event)
 
-@app.post("/", response_model=dict)
+@router.post("/", response_model=dict)
 def create_event_endpoint(request: Request, event: Event):
     """
     Crée un nouvel événement.
@@ -68,9 +68,12 @@ def create_event_endpoint(request: Request, event: Event):
     require_admin_auth(request)
     event_dict = event.dict()
     event_id = create_event(event_dict)
-    return {"id": event_id, "message": "Événement créé avec succès"}
+    created_event = get_event_by_id(event_id)
+    if not created_event:
+        raise HTTPException(status_code=500, detail="Erreur lors de la récupération de l'événement créé")
+    return serialize_event(created_event)
 
-@app.put("/{event_id}", response_model=dict)
+@router.put("/{event_id}", response_model=dict)
 def update_event_endpoint(request: Request, event_id: str, event: Event):
     """
     Met à jour un événement existant.
@@ -82,7 +85,7 @@ def update_event_endpoint(request: Request, event_id: str, event: Event):
         raise HTTPException(status_code=404, detail="Événement non trouvé ou non modifié")
     return {"message": "Événement mis à jour avec succès"}
 
-@app.delete("/{event_id}", response_model=dict)
+@router.delete("/{event_id}", response_model=dict)
 def delete_event_endpoint(request: Request, event_id: str):
     """
     Supprime un événement.

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 import stripe
 import sys
 import os
@@ -11,8 +11,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from app.models.order import Order, OrderInDB
 from app.crud.orders import create_order, get_order_by_id, update_order_status, get_all_orders, get_orders_by_email as get_orders_by_email_db
 
-# Créer l'app FastAPI
-app = FastAPI()
+# Créer un router au lieu d'une app FastAPI
+router = APIRouter()
 
 # Configuration CORS supprimée - gérée par l'application principale
 
@@ -48,7 +48,7 @@ def require_admin_auth(request: Request):
     
     raise HTTPException(status_code=401, detail="Session invalide")
 
-@app.post("/create-payment-intent")
+@router.post("/create-payment-intent")
 async def create_payment_intent(order: Order):
     """
     Crée une intention de paiement Stripe et sauvegarde la commande.
@@ -92,7 +92,7 @@ async def create_payment_intent(order: Order):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
 
-@app.post("/confirm-payment")
+@router.post("/confirm-payment")
 async def confirm_payment(payment_data: dict):
     """
     Confirme le paiement et met à jour le statut de la commande.
@@ -121,7 +121,7 @@ async def confirm_payment(payment_data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur: {str(e)}")
 
-@app.get("/", response_model=List[dict])
+@router.get("/", response_model=List[dict])
 def list_orders(request: Request):
     """
     Retourne toutes les commandes (admin uniquement).
@@ -130,7 +130,7 @@ def list_orders(request: Request):
     orders = get_all_orders()
     return [serialize_order(order) for order in orders]
 
-@app.get("/{order_id}", response_model=dict)
+@router.get("/{order_id}", response_model=dict)
 def get_order(order_id: str):
     """
     Retourne une commande par son ID.
@@ -140,7 +140,7 @@ def get_order(order_id: str):
         raise HTTPException(status_code=404, detail="Commande non trouvée")
     return serialize_order(order)
 
-@app.get("/by-email/{email}", response_model=List[dict])
+@router.get("/by-email/{email}", response_model=List[dict])
 def get_orders_by_email(email: str):
     """
     Retourne les commandes d'un utilisateur par email.
@@ -148,7 +148,7 @@ def get_orders_by_email(email: str):
     orders = get_orders_by_email_db(email)
     return [serialize_order(order) for order in orders]
 
-@app.get("/admin/all", response_model=List[dict])
+@router.get("/admin/all", response_model=List[dict])
 def get_admin_orders(request: Request):
     """
     Retourne toutes les commandes pour l'administration.

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from typing import List
 import sys
 import os
@@ -9,8 +9,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
 from app.crud import artworks
 
-# Créer l'app FastAPI
-app = FastAPI()
+# Créer un router au lieu d'une app FastAPI
+router = APIRouter()
 
 # Configuration supprimée - CORS géré par l'application principale
 
@@ -46,14 +46,14 @@ def require_admin_auth(request: Request):
     
     raise HTTPException(status_code=401, detail="Session invalide")
 
-@app.get("/", response_model=List[ArtworkInDB])
+@router.get("/", response_model=List[ArtworkInDB])
 def list_artworks():
     raws = artworks.get_all_artworks()
     # applique la sérialisation AVANT de passer au model
     serialized = [serialize_artwork(a) for a in raws]
     return serialized
 
-@app.get("/gallery-types", response_model=List[str])
+@router.get("/gallery-types", response_model=List[str])
 def get_gallery_types():
     """
     Retourne les types d'œuvres qui ont au moins une œuvre disponible
@@ -68,7 +68,7 @@ def get_gallery_types():
     
     return sorted(list(available_types))
 
-@app.get("/gallery-types/all", response_model=List[str])
+@router.get("/gallery-types/all", response_model=List[str])
 def get_all_gallery_types():
     """
     Retourne tous les types d'œuvres existants (pour l'admin)
@@ -82,28 +82,35 @@ def get_all_gallery_types():
     
     return sorted(list(all_types))
 
-@app.get("/{artwork_id}", response_model=ArtworkInDB)
+@router.get("/{artwork_id}", response_model=ArtworkInDB)
 def get_artwork(artwork_id: str):
     raw = artworks.get_artwork_by_id(artwork_id)
     if not raw:
         raise HTTPException(status_code=404, detail="Artwork not found")
     return serialize_artwork(raw)
 
-@app.post("/", response_model=ArtworkInDB)
+@router.post("/", response_model=ArtworkInDB)
 def create_artwork(request: Request, artwork: Artwork):
     require_admin_auth(request)
-    created = artworks.create_artwork(artwork.dict())
-    return serialize_artwork(created)
+    created_id = artworks.create_artwork(artwork.dict())
+    created_doc = artworks.get_artwork_by_id(created_id)
+    if not created_doc:
+        raise HTTPException(status_code=500, detail="Erreur lors de la récupération de l'œuvre créée")
+    return serialize_artwork(created_doc)
 
-@app.put("/{artwork_id}", response_model=ArtworkInDB)
+@router.put("/{artwork_id}", response_model=ArtworkInDB)
 def update_artwork(request: Request, artwork_id: str, artwork: Artwork):
     require_admin_auth(request)
-    updated = artworks.update_artwork(artwork_id, artwork.dict())
-    if not updated:
-        raise HTTPException(status_code=404, detail="Artwork not found")
-    return serialize_artwork(updated)
+    modified_count = artworks.update_artwork(artwork_id, artwork.dict())
+    if not modified_count:
+        raise HTTPException(status_code=404, detail="Artwork not found or not modified")
+    # Récupérer le document mis à jour
+    updated_doc = artworks.get_artwork_by_id(artwork_id)
+    if not updated_doc:
+        raise HTTPException(status_code=404, detail="Artwork not found after update")
+    return serialize_artwork(updated_doc)
 
-@app.delete("/{artwork_id}")
+@router.delete("/{artwork_id}")
 def delete_artwork(request: Request, artwork_id: str):
     require_admin_auth(request)
     deleted = artworks.delete_artwork(artwork_id)
@@ -111,7 +118,7 @@ def delete_artwork(request: Request, artwork_id: str):
         raise HTTPException(status_code=404, detail="Artwork not found")
     return {"message": "Artwork deleted successfully"}
 
-@app.put("/update-type")
+@router.put("/update-type")
 def update_artwork_type(request: Request, type_request: UpdateTypeRequest):
     """
     Met à jour un type d'œuvre dans toutes les œuvres
