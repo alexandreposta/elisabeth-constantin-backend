@@ -49,6 +49,20 @@ def get_gallery_types():
     
     return sorted(list(available_types))
 
+@router.get("/by-gallery/{gallery_type}", response_model=List[ArtworkInDB])
+def get_artworks_by_gallery(gallery_type: str):
+    """
+    Retourne les œuvres d'un type de galerie spécifique
+    """
+    artworks_data = artworks.get_all_artworks()
+    filtered_artworks = []
+    
+    for artwork in artworks_data:
+        if artwork.get('is_available', True) and artwork.get('type', 'paint') == gallery_type:
+            filtered_artworks.append(serialize_artwork(artwork))
+    
+    return filtered_artworks
+
 @router.get("/gallery-types/all", response_model=List[str])
 def get_all_gallery_types():
     """

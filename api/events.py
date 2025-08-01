@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import List
-import os
-from app.models.event import Event, EventInDB
+from app.models.event import Event
 from app.crud.events import get_all_events, get_event_by_id, create_event, update_event, delete_event
 
 router = APIRouter()
