@@ -45,13 +45,18 @@ async def login(request: Request, response: Response, creds: LoginRequest):
     if not authenticate_admin(creds.username, creds.password):
         raise HTTPException(status_code=401, detail="Identifiants invalides")
     session_id = create_session()
+    
+    # Détecter si on est en production
+    is_production = request.url.hostname not in ["localhost", "127.0.0.1"]
+    
     response.set_cookie(
         key="session_id",
         value=session_id,
         httponly=True,
         max_age=SESSION_DURATION_SECONDS,
-        secure=False,
-        samesite="lax"
+        secure=is_production,  # HTTPS en production seulement
+        samesite="lax",
+        domain=None  # Permet cross-domain
     )
     return {"success": True, "message": "Connexion réussie"}
 

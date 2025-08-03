@@ -8,36 +8,55 @@ from .orders import router as orders_router
 from .dashboard import router as dashboard_router
 from .auth_admin import router as auth_router
 
-
 app = FastAPI(
     title="Elisabeth Constantin API",
-    description="API du site d'art d'Elisabeth Constantin",
+    description="API pour le site d'art d'Elisabeth Constantin",
     version="1.0.0"
 )
 
-# CORS
+# Configuration CORS
 frontend_url = os.getenv("FRONTEND_URL")
+allowed_origins = [
+    frontend_url,
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        frontend_url,
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
-app.include_router(auth_router, prefix="/api/admin", tags=["admin"])
+# Routes
+app.include_router(auth_router, prefix="/api/admin", tags=["admin-auth"])
+app.include_router(dashboard_router, prefix="/api/admin", tags=["admin-dashboard"])
 app.include_router(artworks_router, prefix="/api/artworks", tags=["artworks"])
 app.include_router(events_router, prefix="/api/events", tags=["events"])
 app.include_router(orders_router, prefix="/api/orders", tags=["orders"])
-app.include_router(dashboard_router, prefix="/api/admin")
-
 
 @app.get("/")
-def root():
+async def root():
     return {
         "message": "Elisabeth Constantin API - FastAPI",
         "status": "healthy",
-        "version": "1.0.0"
+        "endpoints": {
+            "artworks": "/api/artworks",
+            "events": "/api/events", 
+            "orders": "/api/orders",
+            "admin": "/api/admin"
+        }
+    }
+
+@app.get("/api")
+async def api_root():
+    return {
+        "message": "Elisabeth Constantin API - FastAPI",
+        "status": "healthy",
+        "endpoints": {
+            "artworks": "/api/artworks",
+            "events": "/api/events", 
+            "orders": "/api/orders",
+            "admin": "/api/admin"
+        }
     }
