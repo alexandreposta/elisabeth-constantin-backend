@@ -33,7 +33,7 @@ def read_event(event_id: str):
     return serialize_event(event)
 
 @router.post("/", response_model=dict)
-def create_event_endpoint(event: Event, _: bool = Depends(require_admin_auth), request: Request = None):
+def create_event_endpoint(event: Event, request: Request = None, _: bool = Depends(require_admin_auth)):
     """
     Crée un nouvel événement.
     """
@@ -45,7 +45,7 @@ def create_event_endpoint(event: Event, _: bool = Depends(require_admin_auth), r
     return serialize_event(created_event)
 
 @router.put("/{event_id}", response_model=dict)
-def update_event_endpoint(event_id: str, event: Event, _: bool = Depends(require_admin_auth), request: Request = None):
+def update_event_endpoint(event_id: str, event: Event, request: Request = None, _: bool = Depends(require_admin_auth)):
     """
     Met à jour un événement existant.
     """
@@ -56,7 +56,7 @@ def update_event_endpoint(event_id: str, event: Event, _: bool = Depends(require
     return {"message": "Événement mis à jour avec succès"}
 
 @router.delete("/{event_id}", response_model=dict)
-def delete_event_endpoint(event_id: str, _: bool = Depends(require_admin_auth), request: Request = None):
+def delete_event_endpoint(event_id: str, request: Request = None, _: bool = Depends(require_admin_auth)):
     """
     Supprime un événement.
     """
