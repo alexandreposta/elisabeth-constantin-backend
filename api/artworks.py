@@ -3,6 +3,7 @@ from typing import List
 from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
 from app.crud import artworks
 from fastapi import Depends
+from api.auth_admin import require_admin_auth
 
 router = APIRouter()
 
@@ -16,17 +17,6 @@ def serialize_artwork(raw: dict) -> dict:
         "_id": str(raw["_id"]),
         "other_images": raw.get("other_images", []),
     }
-
-def require_admin_auth(request: Request = None):
-    session_id = request.cookies.get("session_id")
-    admin_token = request.cookies.get("admin_token")
-    if not session_id and not admin_token:
-        raise HTTPException(status_code=401, detail="Authentification requise")
-    if admin_token:
-        return True
-    if session_id:
-        return True
-    raise HTTPException(status_code=401, detail="Session invalide")
 
 @router.get("/", response_model=List[ArtworkInDB])
 def list_artworks():

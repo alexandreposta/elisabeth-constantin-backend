@@ -1,16 +1,13 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from datetime import datetime, timedelta
-from api.auth_admin import verify_session
+from api.auth_admin import require_admin_auth
 from app.database import get_database
 from collections import defaultdict
 
 router = APIRouter()
 
 @router.get("/dashboard/stats")
-def get_dashboard_stats(request: Request):
-    session_id = request.cookies.get("session_id")
-    if not verify_session(session_id):
-        raise HTTPException(status_code=401, detail="Session invalide")
+def get_dashboard_stats(request: Request, _: bool = Depends(require_admin_auth)):
 
     try:
         db = get_database()
@@ -37,7 +34,8 @@ def get_dashboard_stats(request: Request):
                 if "created_at" in order and order["created_at"]:
                     created_at = order["created_at"]
                     if isinstance(created_at, str):
-                        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        from datetime import datetime as dt
+                        created_at = dt.fromisoformat(created_at.replace('Z', '+00:00'))
                     
                     date_key = created_at.date().isoformat()
                     daily_sales_data[date_key]["orders_count"] += 1
@@ -77,7 +75,8 @@ def get_dashboard_stats(request: Request):
                 if "created_at" in order and order["created_at"]:
                     created_at = order["created_at"]
                     if isinstance(created_at, str):
-                        created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        from datetime import datetime as dt
+                        created_at = dt.fromisoformat(created_at.replace('Z', '+00:00'))
                     
                     month_key = created_at.strftime('%Y-%m')
                     monthly_data[month_key]["orders"] += 1
@@ -145,7 +144,8 @@ def get_dashboard_stats(request: Request):
                         try:
                             created_at = order["created_at"]
                             if isinstance(created_at, str):
-                                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                                from datetime import datetime as dt
+                                created_at = dt.fromisoformat(created_at.replace('Z', '+00:00'))
                             order_dates.append(created_at)
                         except Exception as e:
                             print(f"Erreur parsing date: {e}")

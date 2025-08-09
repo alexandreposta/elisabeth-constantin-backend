@@ -5,6 +5,7 @@ import sys
 import os
 from app.models.order import Order
 from app.crud.orders import create_order, get_order_by_id, update_order_status, get_all_orders, get_orders_by_email as get_orders_by_email_db
+from api.auth_admin import require_admin_auth
 
 router = APIRouter()
 
@@ -19,17 +20,6 @@ def serialize_order(raw: dict) -> dict:
     raw["id"] = str(raw["_id"])
     del raw["_id"]
     return raw
-
-def require_admin_auth(request: Request = None):
-    session_id = request.cookies.get("session_id")
-    admin_token = request.cookies.get("admin_token")
-    if not session_id and not admin_token:
-        raise HTTPException(status_code=401, detail="Authentification requise")
-    if admin_token:
-        return True
-    if session_id:
-        return True
-    raise HTTPException(status_code=401, detail="Session invalide")
 
 @router.post("/create-payment-intent")
 async def create_payment_intent(order: Order):

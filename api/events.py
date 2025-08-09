@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends
 from typing import List
 from app.models.event import Event
 from app.crud.events import get_all_events, get_event_by_id, create_event, update_event, delete_event
+from api.auth_admin import require_admin_auth
 
 router = APIRouter()
 
@@ -12,17 +13,6 @@ def serialize_event(raw: dict) -> dict:
     raw["id"] = str(raw["_id"])  # Le frontend attend 'id'
     del raw["_id"]  # Supprimer _id car on a maintenant 'id'
     return raw
-
-def require_admin_auth(request: Request = None):
-    session_id = request.cookies.get("session_id")
-    admin_token = request.cookies.get("admin_token")
-    if not session_id and not admin_token:
-        raise HTTPException(status_code=401, detail="Authentification requise")
-    if admin_token:
-        return True
-    if session_id:
-        return True
-    raise HTTPException(status_code=401, detail="Session invalide")
 
 @router.get("/", response_model=List[dict])
 def read_events():
