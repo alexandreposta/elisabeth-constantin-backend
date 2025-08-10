@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from enum import Enum
+from .translation import Translation
 
 class EventStatus(str, Enum):
     UPCOMING = "upcoming"
@@ -11,7 +12,9 @@ class EventStatus(str, Enum):
 
 class Event(BaseModel):
     title: str
+    title_translations: Optional[Translation] = None
     description: str
+    description_translations: Optional[Translation] = None
     start_date: datetime
     end_date: datetime
     location: str

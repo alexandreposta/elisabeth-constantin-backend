@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, Request
-from typing import List
+from fastapi import APIRouter, HTTPException, Request, Query
+from typing import List, Optional
 from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
+from app.models.translation import SupportedLanguage
 from app.crud import artworks
+from app.crud.translations import get_translated_content
 from fastapi import Depends
 from api.auth_admin import require_admin_auth
 
@@ -19,10 +21,29 @@ def serialize_artwork(raw: dict) -> dict:
     }
 
 @router.get("/", response_model=List[ArtworkInDB])
-def list_artworks():
-    raws = artworks.get_all_artworks()
-    serialized = [serialize_artwork(a) for a in raws]
-    return serialized
+def list_artworks(language: Optional[str] = Query("fr", description="Language code (fr/en)")):
+    try:
+        raws = artworks.get_all_artworks()
+        serialized = []
+        
+        for artwork in raws:
+            if language == "en":
+                # Récupérer la version traduite
+                translated = get_translated_content("artwork", str(artwork["_id"]), SupportedLanguage.ENGLISH)
+                if translated:
+                    serialized.append(serialize_artwork(translated))
+                else:
+                    serialized.append(serialize_artwork(artwork))
+            else:
+                serialized.append(serialize_artwork(artwork))
+        
+        return serialized
+    except Exception as e:
+        print(f"Error in list_artworks: {str(e)}")
+        # Fallback to original behavior
+        raws = artworks.get_all_artworks()
+        serialized = [serialize_artwork(a) for a in raws]
+        return serialized
 
 @router.get("/gallery-types", response_model=List[str])
 def get_gallery_types():
@@ -40,18 +61,38 @@ def get_gallery_types():
     return sorted(list(available_types))
 
 @router.get("/by-gallery/{gallery_type}", response_model=List[ArtworkInDB])
-def get_artworks_by_gallery(gallery_type: str):
+def get_artworks_by_gallery(gallery_type: str, language: Optional[str] = Query("fr", description="Language code (fr/en)")):
     """
     Retourne les œuvres d'un type de galerie spécifique
     """
-    artworks_data = artworks.get_all_artworks()
-    filtered_artworks = []
-    
-    for artwork in artworks_data:
-        if artwork.get('is_available', True) and artwork.get('type', 'paint') == gallery_type:
-            filtered_artworks.append(serialize_artwork(artwork))
-    
-    return filtered_artworks
+    try:
+        artworks_data = artworks.get_all_artworks()
+        filtered_artworks = []
+        
+        for artwork in artworks_data:
+            if artwork.get('type', '').lower() == gallery_type.lower():
+                if language == "en":
+                    # Récupérer la version traduite
+                    translated = get_translated_content("artwork", str(artwork["_id"]), SupportedLanguage.ENGLISH)
+                    if translated:
+                        filtered_artworks.append(serialize_artwork(translated))
+                    else:
+                        filtered_artworks.append(serialize_artwork(artwork))
+                else:
+                    filtered_artworks.append(serialize_artwork(artwork))
+        
+        return filtered_artworks
+    except Exception as e:
+        print(f"Error in get_artworks_by_gallery: {str(e)}")
+        # Fallback to original behavior
+        artworks_data = artworks.get_all_artworks()
+        filtered_artworks = []
+        
+        for artwork in artworks_data:
+            if artwork.get('type', '').lower() == gallery_type.lower():
+                filtered_artworks.append(serialize_artwork(artwork))
+        
+        return filtered_artworks
 
 @router.get("/gallery-types/all", response_model=List[str])
 def get_all_gallery_types():
@@ -68,11 +109,31 @@ def get_all_gallery_types():
     return sorted(list(all_types))
 
 @router.get("/{artwork_id}", response_model=ArtworkInDB)
-def get_artwork(artwork_id: str):
-    raw = artworks.get_artwork_by_id(artwork_id)
-    if not raw:
-        raise HTTPException(status_code=404, detail="Artwork not found")
-    return serialize_artwork(raw)
+def get_artwork_by_id(artwork_id: str, language: Optional[str] = Query("fr", description="Language code (fr/en)")):
+    """
+    Récupère une œuvre d'art par son ID avec traduction optionnelle
+    """
+    try:
+        artwork = artworks.get_artwork_by_id(artwork_id)
+        if not artwork:
+            raise HTTPException(status_code=404, detail="Artwork not found")
+        
+        if language == "en":
+            # Récupérer la version traduite
+            translated = get_translated_content("artwork", artwork_id, SupportedLanguage.ENGLISH)
+            if translated:
+                return serialize_artwork(translated)
+        
+        return serialize_artwork(artwork)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in get_artwork_by_id: {str(e)}")
+        # Fallback to original behavior
+        artwork = artworks.get_artwork_by_id(artwork_id)
+        if not artwork:
+            raise HTTPException(status_code=404, detail="Artwork not found")
+        return serialize_artwork(artwork)
 
 @router.post("/", response_model=ArtworkInDB)
 def create_artwork(artwork: Artwork, _: bool = Depends(require_admin_auth), request: Request = None):

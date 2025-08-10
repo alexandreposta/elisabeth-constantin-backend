@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
-from typing import List
+from fastapi import APIRouter, HTTPException, Request, Depends, Query
+from typing import List, Optional
 from app.models.event import Event
+from app.models.translation import SupportedLanguage
 from app.crud.events import get_all_events, get_event_by_id, create_event, update_event, delete_event
+from app.crud.translations import get_translated_content
 from api.auth_admin import require_admin_auth
 
 router = APIRouter()
@@ -15,22 +17,58 @@ def serialize_event(raw: dict) -> dict:
     return raw
 
 @router.get("/", response_model=List[dict])
-def read_events():
+async def read_events(language: Optional[str] = Query("fr", description="Language code (fr/en)")):
     """
-    Retourne la liste de tous les événements.
+    Retourne la liste de tous les événements avec traduction optionnelle.
     """
-    events = get_all_events()
-    return [serialize_event(event) for event in events]
+    try:
+        events = get_all_events()
+        serialized_events = []
+        
+        for event in events:
+            if language == "en":
+                # Récupérer la version traduite
+                translated = await get_translated_content("event", str(event["_id"]), SupportedLanguage.ENGLISH)
+                if translated:
+                    serialized_events.append(serialize_event(translated))
+                else:
+                    serialized_events.append(serialize_event(event))
+            else:
+                serialized_events.append(serialize_event(event))
+        
+        return serialized_events
+    except Exception as e:
+        print(f"Error in read_events: {str(e)}")
+        # Fallback to original behavior
+        events = get_all_events()
+        return [serialize_event(event) for event in events]
 
 @router.get("/{event_id}", response_model=dict)
-def read_event(event_id: str):
+async def read_event(event_id: str, language: Optional[str] = Query("fr", description="Language code (fr/en)")):
     """
-    Retourne un événement par son ID.
+    Retourne un événement par son ID avec traduction optionnelle.
     """
-    event = get_event_by_id(event_id)
-    if not event:
-        raise HTTPException(status_code=404, detail="Événement non trouvé")
-    return serialize_event(event)
+    try:
+        event = get_event_by_id(event_id)
+        if not event:
+            raise HTTPException(status_code=404, detail="Événement non trouvé")
+        
+        if language == "en":
+            # Récupérer la version traduite
+            translated = await get_translated_content("event", event_id, SupportedLanguage.ENGLISH)
+            if translated:
+                return serialize_event(translated)
+        
+        return serialize_event(event)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in read_event: {str(e)}")
+        # Fallback to original behavior
+        event = get_event_by_id(event_id)
+        if not event:
+            raise HTTPException(status_code=404, detail="Événement non trouvé")
+        return serialize_event(event)
 
 @router.post("/", response_model=dict)
 def create_event_endpoint(event: Event, request: Request = None, _: bool = Depends(require_admin_auth)):

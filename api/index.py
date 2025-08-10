@@ -7,6 +7,7 @@ from .events import router as events_router
 from .orders import router as orders_router
 from .dashboard import router as dashboard_router
 from .auth_admin import router as auth_router
+from .translations import router as translations_router
 
 app = FastAPI(
     title="Elisabeth Constantin API",
@@ -34,6 +35,7 @@ app.include_router(dashboard_router, prefix="/api/admin", tags=["admin-dashboard
 app.include_router(artworks_router, prefix="/api/artworks", tags=["artworks"])
 app.include_router(events_router, prefix="/api/events", tags=["events"])
 app.include_router(orders_router, prefix="/api/orders", tags=["orders"])
+app.include_router(translations_router, prefix="/api/translations", tags=["translations"])
 
 @app.get("/")
 async def root():
@@ -44,6 +46,7 @@ async def root():
             "artworks": "/api/artworks",
             "events": "/api/events", 
             "orders": "/api/orders",
+            "translations": "/api/translations",
             "admin": "/api/admin"
         }
     }
@@ -57,6 +60,7 @@ async def api_root():
             "artworks": "/api/artworks",
             "events": "/api/events", 
             "orders": "/api/orders",
+            "translations": "/api/translations",
             "admin": "/api/admin"
         }
     }
