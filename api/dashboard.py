@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, HTTPException, Depends
 from datetime import datetime, timedelta
 from api.auth_admin import require_admin_auth
 from app.database import get_database
+from app.crud.newsletter import get_newsletter_stats
 from collections import defaultdict
 
 router = APIRouter()
@@ -162,6 +163,13 @@ def get_dashboard_stats(request: Request, _: bool = Depends(require_admin_auth))
             print(f"Erreur calcul jours entre commandes: {e}")
             avg_days_between_orders = 0
         
+        # --- Statistiques Newsletter ---
+        try:
+            newsletter_stats = get_newsletter_stats()
+        except Exception as e:
+            print(f"Erreur récupération stats newsletter: {e}")
+            newsletter_stats = {"total_subscribers": 0, "total_unsubscribed": 0, "total_emails": 0}
+        
         return {
             "sales": {
                 "daily_sales": daily_sales,
@@ -176,6 +184,7 @@ def get_dashboard_stats(request: Request, _: bool = Depends(require_admin_auth))
                 "conversion_data": conversion_data,
                 "avg_days_between_orders": avg_days_between_orders
             },
+            "newsletter": newsletter_stats,
             "last_updated": datetime.now().isoformat()
         }
 

@@ -3,6 +3,7 @@ from typing import List
 from app.models.event import Event
 from app.crud.events import get_all_events, get_event_by_id, create_event, update_event, delete_event
 from api.auth_admin import require_admin_auth
+from app.services.email_service import EmailService
 
 router = APIRouter()
 
@@ -42,6 +43,15 @@ def create_event_endpoint(event: Event, request: Request = None, _: bool = Depen
     created_event = get_event_by_id(event_id)
     if not created_event:
         raise HTTPException(status_code=500, detail="Erreur lors de la récupération de l'événement créé")
+    
+    # Envoyer une notification newsletter pour le nouvel événement
+    try:
+        email_service = EmailService()
+        email_service.notify_new_event(serialize_event(created_event))
+    except Exception as e:
+        # Log l'erreur mais ne fait pas échouer la création
+        print(f"Erreur lors de l'envoi de la notification newsletter: {e}")
+    
     return serialize_event(created_event)
 
 @router.put("/{event_id}", response_model=dict)

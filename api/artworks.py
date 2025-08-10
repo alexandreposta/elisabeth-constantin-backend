@@ -4,6 +4,7 @@ from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
 from app.crud import artworks
 from fastapi import Depends
 from api.auth_admin import require_admin_auth
+from app.services.email_service import EmailService
 
 router = APIRouter()
 
@@ -80,6 +81,15 @@ def create_artwork(artwork: Artwork, _: bool = Depends(require_admin_auth), requ
     created_doc = artworks.get_artwork_by_id(created_id)
     if not created_doc:
         raise HTTPException(status_code=500, detail="Erreur lors de la récupération de l'œuvre créée")
+    
+    # Envoyer une notification newsletter pour la nouvelle œuvre
+    try:
+        email_service = EmailService()
+        email_service.notify_new_artwork(serialize_artwork(created_doc))
+    except Exception as e:
+        # Log l'erreur mais ne fait pas échouer la création
+        print(f"Erreur lors de l'envoi de la notification newsletter: {e}")
+    
     return serialize_artwork(created_doc)
 
 @router.put("/{artwork_id}", response_model=ArtworkInDB)
