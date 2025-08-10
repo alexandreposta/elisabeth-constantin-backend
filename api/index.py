@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from .artworks import router as artworks_router
+from .artwork_types import router as artwork_types_router
 from .events import router as events_router
 from .orders import router as orders_router
 from .dashboard import router as dashboard_router
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/admin", tags=["admin-auth"])
 app.include_router(dashboard_router, prefix="/api/admin", tags=["admin-dashboard"])
 app.include_router(artworks_router, prefix="/api/artworks", tags=["artworks"])
+app.include_router(artwork_types_router, prefix="/api/artwork-types", tags=["artwork-types"])
 app.include_router(events_router, prefix="/api/events", tags=["events"])
 app.include_router(orders_router, prefix="/api/orders", tags=["orders"])
 

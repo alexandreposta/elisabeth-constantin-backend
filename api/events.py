@@ -49,11 +49,25 @@ def update_event_endpoint(event_id: str, event: Event, request: Request = None, 
     """
     Met à jour un événement existant.
     """
+    # Vérifier d'abord que l'événement existe
+    existing_event = get_event_by_id(event_id)
+    if not existing_event:
+        raise HTTPException(status_code=404, detail="Événement non trouvé")
+    
     event_dict = event.dict()
     modified_count = update_event(event_id, event_dict)
+    
+    # Si aucune modification n'a été faite, retourner un succès
+    # (cela peut arriver si les données sont identiques)
     if modified_count == 0:
-        raise HTTPException(status_code=404, detail="Événement non trouvé ou non modifié")
-    return {"message": "Événement mis à jour avec succès"}
+        return {"message": "Événement inchangé", "event": serialize_event(existing_event)}
+    
+    # Sinon, récupérer l'événement mis à jour et le retourner
+    updated_event = get_event_by_id(event_id)
+    if not updated_event:
+        raise HTTPException(status_code=404, detail="Événement non trouvé après mise à jour")
+    
+    return {"message": "Événement mis à jour avec succès", "event": serialize_event(updated_event)}
 
 @router.delete("/{event_id}", response_model=dict)
 def delete_event_endpoint(event_id: str, request: Request = None, _: bool = Depends(require_admin_auth)):

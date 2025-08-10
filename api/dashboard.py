@@ -102,7 +102,17 @@ def get_dashboard_stats(request: Request, _: bool = Depends(require_admin_auth))
         for artwork in artworks:
             artwork_type = artwork.get("type", "Autre")
             type_data[artwork_type]["count"] += 1
-            if artwork.get("is_available", False):
+            
+            # Vérifier si l'œuvre est disponible (nouveau statut ou ancien is_available)
+            is_available = False
+            if 'status' in artwork:
+                is_available = artwork['status'] == 'Disponible'
+            elif 'is_available' in artwork:
+                is_available = artwork.get('is_available', False)
+            else:
+                is_available = False  # Par défaut non disponible pour le dashboard
+                
+            if is_available:
                 type_data[artwork_type]["available"] += 1
         artwork_types = [
             {"type": type_name, **data}

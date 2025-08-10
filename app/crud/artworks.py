@@ -46,6 +46,17 @@ def update_artwork(artwork_id: str, update_data: dict) -> int:
     if not existing:
         return 0
     
+    # Comparer les données pour voir s'il y a vraiment des changements
+    has_changes = False
+    for key, new_value in update_data.items():
+        existing_value = existing.get(key)
+        if existing_value != new_value:
+            has_changes = True
+            break
+    
+    # Si aucun changement, retourner 0 sans faire de requête DB
+    if not has_changes:
+        return 0
     
     result = artworks_collection.update_one(
         {"_id": oid},

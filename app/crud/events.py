@@ -37,8 +37,27 @@ def update_event(event_id: str, update_data: dict) -> int:
         oid = ObjectId(event_id)
     except Exception:
         return 0
+    
     update_data = dict(update_data)
     update_data.pop("_id", None)
+    
+    # Vérifier si l'événement existe
+    existing = events_collection.find_one({"_id": oid})
+    if not existing:
+        return 0
+    
+    # Comparer les données pour voir s'il y a vraiment des changements
+    has_changes = False
+    for key, new_value in update_data.items():
+        existing_value = existing.get(key)
+        if existing_value != new_value:
+            has_changes = True
+            break
+    
+    # Si aucun changement, retourner 0 sans faire de requête DB
+    if not has_changes:
+        return 0
+    
     result = events_collection.update_one(
         {"_id": oid},
         {"$set": update_data}
