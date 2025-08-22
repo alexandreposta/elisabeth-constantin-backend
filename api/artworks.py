@@ -9,14 +9,12 @@ router = APIRouter()
 
 def serialize_artwork(raw: dict) -> dict:
     """
-    Convertit le BSON ObjectId en str, 
-    pour que Pydantic puisse le mapper dans `id`.
+    Convertit le BSON ObjectId en str pour la sérialisation JSON.
     """
     result = {
         **raw,
         "_id": str(raw["_id"]),
         "other_images": raw.get("other_images", []),
-        # Ajouter un statut par défaut si manquant
         "status": raw.get("status", "Disponible")
     }
     return result
