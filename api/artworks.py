@@ -54,8 +54,14 @@ def get_artworks_by_gallery(gallery_type: str):
     artworks_data = artworks.get_all_artworks()
     filtered_artworks = []
     
+    # Debug: Logger ce qui est reçu et les types disponibles
+    print(f"🔍 DEBUG - Gallery type reçu: '{gallery_type}'")
+    all_types = set(a.get('type', 'N/A') for a in artworks_data)
+    print(f"🔍 DEBUG - Types disponibles dans DB: {all_types}")
+    
     # Normaliser le type de galerie pour la comparaison (insensible à la casse et aux espaces)
     normalized_gallery_type = gallery_type.lower().replace(" ", "").replace("-", "").replace("_", "")
+    print(f"🔍 DEBUG - Gallery type normalisé: '{normalized_gallery_type}'")
     
     for artwork in artworks_data:
         # Normaliser le type de l'artwork de la même manière
@@ -66,6 +72,7 @@ def get_artworks_by_gallery(gallery_type: str):
         if normalized_artwork_type == normalized_gallery_type:
             filtered_artworks.append(serialize_artwork(artwork))
     
+    print(f"🔍 DEBUG - Nombre d'artworks trouvés: {len(filtered_artworks)}")
     return filtered_artworks
 
 @router.get("/gallery-types/all", response_model=List[str])
