@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 import os
 
 from .artworks import router as artworks_router
@@ -64,5 +65,5 @@ async def api_root():
         }
     }
 
-# Export pour Vercel
-handler = app
+# Export pour Vercel avec Mangum (adaptateur ASGI pour serverless)
+handler = Mangum(app)
