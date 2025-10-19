@@ -54,9 +54,16 @@ def get_artworks_by_gallery(gallery_type: str):
     artworks_data = artworks.get_all_artworks()
     filtered_artworks = []
     
+    # Normaliser le type de galerie pour la comparaison (insensible à la casse et aux espaces)
+    normalized_gallery_type = gallery_type.lower().replace(" ", "").replace("-", "").replace("_", "")
+    
     for artwork in artworks_data:
+        # Normaliser le type de l'artwork de la même manière
+        artwork_type = artwork.get('type', 'paint')
+        normalized_artwork_type = artwork_type.lower().replace(" ", "").replace("-", "").replace("_", "")
+        
         # Filtrer seulement par type, pas par statut (afficher toutes les œuvres)
-        if artwork.get('type', 'paint') == gallery_type:
+        if normalized_artwork_type == normalized_gallery_type:
             filtered_artworks.append(serialize_artwork(artwork))
     
     return filtered_artworks
