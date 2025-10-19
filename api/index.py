@@ -79,4 +79,4 @@ async def api_root():
     }
 
 # Export pour Vercel avec Mangum (adaptateur ASGI pour serverless)
-handler = Mangum(app)
+handler = Mangum(app, lifespan="off")
