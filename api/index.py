@@ -2,13 +2,26 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 import os
+import sys
 
-from .artworks import router as artworks_router
-from .artwork_types import router as artwork_types_router
-from .events import router as events_router
-from .orders import router as orders_router
-from .dashboard import router as dashboard_router
-from .auth_admin import router as auth_router
+# Ajouter le dossier parent au path pour que les imports fonctionnent sur Vercel
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+try:
+    from api.artworks import router as artworks_router
+    from api.artwork_types import router as artwork_types_router
+    from api.events import router as events_router
+    from api.orders import router as orders_router
+    from api.dashboard import router as dashboard_router
+    from api.auth_admin import router as auth_router
+except ImportError:
+    # Fallback aux imports relatifs si les absolus ne marchent pas
+    from .artworks import router as artworks_router
+    from .artwork_types import router as artwork_types_router
+    from .events import router as events_router
+    from .orders import router as orders_router
+    from .dashboard import router as dashboard_router
+    from .auth_admin import router as auth_router
 
 app = FastAPI(
     title="Elisabeth Constantin API",
