@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from mangum import Mangum
 import os
 import sys
 
@@ -78,5 +77,5 @@ async def api_root():
         }
     }
 
-# Export pour Vercel avec Mangum (adaptateur ASGI pour serverless)
-handler = Mangum(app, lifespan="off")
+# L'application FastAPI est automatiquement détectée par Vercel
+# via le nom 'app' et sera servie avec uvicorn
