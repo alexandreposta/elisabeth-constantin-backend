@@ -16,27 +16,17 @@ app = FastAPI(
 )
 
 # Configuration CORS
-# FRONTEND_URL can be a single origin or a comma-separated list of origins.
-# If not set, we fallback to a safe policy. Note: using "*" with allow_credentials=True
-# is not allowed by browsers, so we dynamically set allow_credentials.
-frontend_url = os.getenv("FRONTEND_URL", "")
-if frontend_url:
-    # Accept comma-separated origins (useful for staging + production)
-    allowed_origins = [o.strip() for o in frontend_url.split(",") if o.strip()]
-else:
-    # TEMPORARY FIX: Allow production domain by default if FRONTEND_URL not set
-    allowed_origins = ["https://elisabeth-constantin.fr", "http://localhost:5173"]
+allowed_origins_str = os.getenv("FRONTEND_URL", "http://localhost:5173")
+allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
 
-# If the list contains a wildcard, disable credentials (browsers block credentials with '*')
-allow_credentials_flag = True
-if "*" in allowed_origins:
-    allow_credentials_flag = False
+# Si on utilise "*" (wildcard), désactiver credentials
+allow_credentials = "*" not in allowed_origins
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=allow_credentials_flag,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_credentials=allow_credentials,
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
