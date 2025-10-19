@@ -24,9 +24,8 @@ if frontend_url:
     # Accept comma-separated origins (useful for staging + production)
     allowed_origins = [o.strip() for o in frontend_url.split(",") if o.strip()]
 else:
-    # WARNING: In production you should set FRONTEND_URL explicitly. For safety we
-    # don't open a wildcard by default; keep empty list which denies cross-origin.
-    allowed_origins = []
+    # TEMPORARY FIX: Allow production domain by default if FRONTEND_URL not set
+    allowed_origins = ["https://elisabeth-constantin.fr", "http://localhost:5173"]
 
 # If the list contains a wildcard, disable credentials (browsers block credentials with '*')
 allow_credentials_flag = True
