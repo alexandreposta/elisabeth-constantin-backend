@@ -73,3 +73,6 @@ async def api_root():
             "admin": "/api/admin"
         }
     }
+
+# Export pour Vercel
+handler = app
