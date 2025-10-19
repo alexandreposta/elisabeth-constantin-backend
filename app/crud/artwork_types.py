@@ -84,26 +84,6 @@ def delete_artwork_type(type_id: str) -> int:
     )
     return result.modified_count
 
-def ensure_default_artwork_types():
-    """
-    S'assure que les types d'œuvres par défaut existent en base.
-    """
-    collection = get_database_collection()
-    
-    default_types = [
-        {"name": "peinture", "display_name": "Peinture"},
-        {"name": "paint", "display_name": "Peinture"},
-        {"name": "3d", "display_name": "3D"},
-        {"name": "sculpture", "display_name": "Sculpture"},
-        {"name": "aquarelle", "display_name": "Aquarelle"},
-    ]
-    
-    for type_data in default_types:
-        existing = collection.find_one({"name": type_data["name"]})
-        if not existing:
-            type_data["is_active"] = True
-            collection.insert_one(type_data)
-
 def get_artwork_types_for_api() -> List[str]:
     """
     Retourne une liste simple des noms des types d'œuvres pour l'API.

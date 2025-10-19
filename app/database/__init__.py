@@ -12,6 +12,7 @@ db     = client[DB_NAME]
 artworks_collection = db["artworks"]
 events_collection = db["events"]
 orders_collection = db["orders"]
+artwork_types_collection = db["artwork_types"]
 
 def get_database():
     """Retourne l'instance de la base de données MongoDB"""

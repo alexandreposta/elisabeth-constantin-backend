@@ -76,9 +76,10 @@ def delete_artwork(artwork_id: str) -> int:
     result = artworks_collection.delete_one({"_id": oid})
     return result.deleted_count
 
-def update_artwork_type(old_type: str, new_type: str) -> int:
+def update_artwork_type(old_type: str, new_type: Optional[str]) -> int:
     """
     Met à jour le type d'œuvre dans toutes les œuvres ayant l'ancien type.
+    Si new_type est None, met le champ à null (non défini).
     Retourne le nombre de documents modifiés.
     """
     
@@ -89,11 +90,19 @@ def update_artwork_type(old_type: str, new_type: str) -> int:
         if count_before == 0:
             return 0
         
-        # Effectuer la mise à jour
-        result = artworks_collection.update_many(
-            {"type": old_type},
-            {"$set": {"type": new_type}}
-        )
+        # Effectuer la mise à jour ou suppression du champ
+        if new_type is None:
+            # Mettre le champ à null
+            result = artworks_collection.update_many(
+                {"type": old_type},
+                {"$set": {"type": None}}
+            )
+        else:
+            # Mettre à jour avec le nouveau type
+            result = artworks_collection.update_many(
+                {"type": old_type},
+                {"$set": {"type": new_type}}
+            )
 
         return result.modified_count
         

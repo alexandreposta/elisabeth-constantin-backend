@@ -28,23 +28,16 @@ def list_artworks():
 @router.get("/gallery-types", response_model=List[str])
 def get_gallery_types():
     """
-    Retourne tous les types d'œuvres (pour le menu de navigation)
+    Retourne tous les types d'œuvres uniques depuis les artworks
     """
-    # Utiliser la nouvelle logique des types d'œuvres pour le menu
-    try:
-        from app.crud import artwork_types
-        result = artwork_types.get_artwork_types_for_api()
-        return result
-    except Exception as e:
-        # Fallback vers l'ancienne logique - afficher tous les types (pas seulement disponibles)
-        artworks_data = artworks.get_all_artworks()
-        all_types = set()
-        
-        for artwork in artworks_data:
-            artwork_type = artwork.get('type', 'paint')
-            all_types.add(artwork_type)
+    artworks_data = artworks.get_all_artworks()
+    all_types = set()
     
-        return sorted(list(all_types))
+    for artwork in artworks_data:
+        artwork_type = artwork.get('type', 'peinture')
+        all_types.add(artwork_type)
+
+    return sorted(list(all_types))
 
 @router.get("/by-gallery/{gallery_type}", response_model=List[ArtworkInDB])
 def get_artworks_by_gallery(gallery_type: str):
@@ -54,14 +47,8 @@ def get_artworks_by_gallery(gallery_type: str):
     artworks_data = artworks.get_all_artworks()
     filtered_artworks = []
     
-    # Debug: Logger ce qui est reçu et les types disponibles
-    print(f"🔍 DEBUG - Gallery type reçu: '{gallery_type}'")
-    all_types = set(a.get('type', 'N/A') for a in artworks_data)
-    print(f"🔍 DEBUG - Types disponibles dans DB: {all_types}")
-    
     # Normaliser le type de galerie pour la comparaison (insensible à la casse et aux espaces)
     normalized_gallery_type = gallery_type.lower().replace(" ", "").replace("-", "").replace("_", "")
-    print(f"🔍 DEBUG - Gallery type normalisé: '{normalized_gallery_type}'")
     
     for artwork in artworks_data:
         # Normaliser le type de l'artwork de la même manière
@@ -72,7 +59,6 @@ def get_artworks_by_gallery(gallery_type: str):
         if normalized_artwork_type == normalized_gallery_type:
             filtered_artworks.append(serialize_artwork(artwork))
     
-    print(f"🔍 DEBUG - Nombre d'artworks trouvés: {len(filtered_artworks)}")
     return filtered_artworks
 
 @router.get("/gallery-types/all", response_model=List[str])
@@ -139,7 +125,7 @@ def delete_artwork(artwork_id: str, _: bool = Depends(require_admin_auth), reque
         raise HTTPException(status_code=404, detail="Artwork not found")
     return {"message": "Artwork deleted successfully"}
 
-@router.put("/update-type")
+@router.put("/type/update")
 def update_artwork_type(type_request: UpdateTypeRequest, _: bool = Depends(require_admin_auth), request: Request = None):
     """
     Met à jour un type d'œuvre dans toutes les œuvres
