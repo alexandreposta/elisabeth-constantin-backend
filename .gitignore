@@ -137,3 +137,7 @@ celerybeat.pid
 
 # Pyre type checker
 .pyre/
+
+#Docker
+docker-compose.yml
+Dockerfile
