@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, BackgroundTasks
 from typing import List
 from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
 from app.crud import artworks
 from fastapi import Depends
 from api.auth_admin import require_admin_auth
+from app.services.email.notifications import notify_new_artwork, notify_removed_artwork
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 def serialize_artwork(raw: dict) -> dict:
@@ -91,11 +94,24 @@ def get_artwork(artwork_id: str):
     return serialize_artwork(raw)
 
 @router.post("/", response_model=ArtworkInDB)
-def create_artwork(artwork: Artwork, _: bool = Depends(require_admin_auth), request: Request = None):
+def create_artwork(
+    artwork: Artwork,
+    background_tasks: BackgroundTasks,
+    _: bool = Depends(require_admin_auth),
+    request: Request = None
+):
+    """
+    Crée une nouvelle œuvre et notifie les abonnés à la newsletter.
+    """
     created_id = artworks.create_artwork(artwork.dict())
     created_doc = artworks.get_artwork_by_id(created_id)
     if not created_doc:
         raise HTTPException(status_code=500, detail="Erreur lors de la récupération de l'œuvre créée")
+    
+    # Ajouter la tâche de notification en arrière-plan
+    background_tasks.add_task(notify_new_artwork, created_id)
+    logger.info(f"📧 Scheduled newsletter notification for new artwork: {created_id}")
+    
     return serialize_artwork(created_doc)
 
 @router.put("/{artwork_id}", response_model=ArtworkInDB)
@@ -119,10 +135,30 @@ def update_artwork(artwork_id: str, artwork: Artwork, _: bool = Depends(require_
     return serialize_artwork(updated_doc)
 
 @router.delete("/{artwork_id}")
-def delete_artwork(artwork_id: str, _: bool = Depends(require_admin_auth), request: Request = None):
+def delete_artwork(
+    artwork_id: str,
+    background_tasks: BackgroundTasks,
+    _: bool = Depends(require_admin_auth),
+    request: Request = None
+):
+    """
+    Supprime une œuvre et notifie les abonnés à la newsletter.
+    """
+    # Récupérer l'artwork AVANT de le supprimer (pour l'email)
+    artwork_data = artworks.get_artwork_by_id(artwork_id)
+    if not artwork_data:
+        raise HTTPException(status_code=404, detail="Artwork not found")
+    
+    # Supprimer l'artwork
     deleted = artworks.delete_artwork(artwork_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Artwork not found")
+    
+    # Ajouter la tâche de notification en arrière-plan
+    # Passer les données de l'artwork (car il est supprimé)
+    background_tasks.add_task(notify_removed_artwork, serialize_artwork(artwork_data))
+    logger.info(f"📧 Scheduled newsletter notification for removed artwork: {artwork_id}")
+    
     return {"message": "Artwork deleted successfully"}
 
 @router.put("/type/update")
