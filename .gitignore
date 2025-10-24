@@ -141,3 +141,4 @@ celerybeat.pid
 #Docker
 docker-compose.yml
 Dockerfile
+.dockerignore
