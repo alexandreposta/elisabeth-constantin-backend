@@ -13,7 +13,9 @@ try:
     from api.orders import router as orders_router
     from api.dashboard import router as dashboard_router
     from api.auth_admin import router as auth_router
-    from api.subscribe import router as subscribe_router
+    from api.subscribe import router as subscribe_router_old  # Ancien endpoint (deprecated)
+    from app.routers.newsletter import router as newsletter_router
+    from app.routers.mailjet_webhooks import router as webhooks_router
 except ImportError:
     # Fallback aux imports relatifs si les absolus ne marchent pas
     from .artworks import router as artworks_router
@@ -22,7 +24,9 @@ except ImportError:
     from .orders import router as orders_router
     from .dashboard import router as dashboard_router
     from .auth_admin import router as auth_router
-    from .subscribe import router as subscribe_router
+    from .subscribe import router as subscribe_router_old  # Ancien endpoint (deprecated)
+    from app.routers.newsletter import router as newsletter_router
+    from app.routers.mailjet_webhooks import router as webhooks_router
 
 app = FastAPI(
     title="Elisabeth Constantin API",
@@ -52,7 +56,15 @@ app.include_router(artworks_router, prefix="/api/artworks", tags=["artworks"])
 app.include_router(artwork_types_router, prefix="/api/artwork-types", tags=["artwork-types"])
 app.include_router(events_router, prefix="/api/events", tags=["events"])
 app.include_router(orders_router, prefix="/api/orders", tags=["orders"])
-app.include_router(subscribe_router, prefix="/api/subscribe", tags=["subscribe"])
+
+# Newsletter endpoints (nouveau système avec double opt-in)
+app.include_router(newsletter_router, prefix="/api/newsletter", tags=["newsletter"])
+
+# Webhooks Mailjet
+app.include_router(webhooks_router, prefix="/api/webhooks/mailjet", tags=["webhooks"])
+
+# Ancien endpoint de souscription (deprecated - à garder pour compatibilité temporaire)
+app.include_router(subscribe_router_old, prefix="/api/subscribe", tags=["subscribe-deprecated"])
 
 @app.get("/")
 async def root():

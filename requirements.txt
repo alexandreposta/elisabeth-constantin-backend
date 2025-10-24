@@ -6,3 +6,5 @@ python-dotenv
 stripe
 python-multipart
 email-validator
+mailjet-rest
+pyjwt
