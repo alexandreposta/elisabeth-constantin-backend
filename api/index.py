@@ -13,6 +13,7 @@ try:
     from api.orders import router as orders_router
     from api.dashboard import router as dashboard_router
     from api.auth_admin import router as auth_router
+    from api.subscribe import router as subscribe_router
 except ImportError:
     # Fallback aux imports relatifs si les absolus ne marchent pas
     from .artworks import router as artworks_router
@@ -21,6 +22,7 @@ except ImportError:
     from .orders import router as orders_router
     from .dashboard import router as dashboard_router
     from .auth_admin import router as auth_router
+    from .subscribe import router as subscribe_router
 
 app = FastAPI(
     title="Elisabeth Constantin API",
@@ -50,6 +52,7 @@ app.include_router(artworks_router, prefix="/api/artworks", tags=["artworks"])
 app.include_router(artwork_types_router, prefix="/api/artwork-types", tags=["artwork-types"])
 app.include_router(events_router, prefix="/api/events", tags=["events"])
 app.include_router(orders_router, prefix="/api/orders", tags=["orders"])
+app.include_router(subscribe_router, prefix="/api/subscribe", tags=["subscribe"])
 
 @app.get("/")
 async def root():

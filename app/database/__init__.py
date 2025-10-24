@@ -23,6 +23,8 @@ try:
     events_collection = db["events"]
     orders_collection = db["orders"]
     artwork_types_collection = db["artwork_types"]
+    # Collection pour les abonnés à la newsletter
+    subscribers_collection = db["subscribers"]
     print("✅ MongoDB connected successfully")
 except Exception as e:
     print(f"❌ MongoDB connection failed: {e}", file=sys.stderr)
@@ -32,6 +34,7 @@ except Exception as e:
     events_collection = None
     orders_collection = None
     artwork_types_collection = None
+    subscribers_collection = None
 
 def get_database():
     """Retourne l'instance de la base de données MongoDB"""
