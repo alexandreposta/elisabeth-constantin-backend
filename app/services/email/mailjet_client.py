@@ -28,9 +28,11 @@ TEMPLATE_WELCOME = os.getenv("MAILJET_TEMPLATE_WELCOME")
 mailjet_client = None
 if MAILJET_API_KEY and MAILJET_API_SECRET:
     mailjet_client = Client(auth=(MAILJET_API_KEY, MAILJET_API_SECRET), version='v3.1')
-    logger.info("✅ Mailjet client initialized successfully")
+    logger.info(f"✅ Mailjet client initialized successfully (API Key: {MAILJET_API_KEY[:8]}...)")
+    logger.debug(f"🔑 Mailjet credentials loaded: API_KEY={MAILJET_API_KEY[:12]}..., SECRET={MAILJET_API_SECRET[:12] if MAILJET_API_SECRET else 'MISSING'}...")
 else:
     logger.warning("⚠️ Mailjet credentials not set. Email sending will be disabled.")
+    logger.debug(f"🔍 Debug: MAILJET_API_KEY={'SET' if MAILJET_API_KEY else 'MISSING'}, MAILJET_API_SECRET={'SET' if MAILJET_API_SECRET else 'MISSING'}")
 
 
 def send_template_email(
@@ -86,28 +88,39 @@ def send_template_email(
     
     data = {"Messages": [message]}
     
+    # Log détaillé avant l'envoi
+    logger.debug(f"📧 Preparing to send email: template_id={template_id}, to={to_list}, sender={MAILJET_SENDER_EMAIL}")
+    logger.debug(f"📦 Payload: {data}")
+    
     # Retry logic avec backoff exponentiel
     for attempt in range(max_retries):
         try:
+            logger.info(f"🔄 Attempt {attempt + 1}/{max_retries}: calling Mailjet API...")
             result = mailjet_client.send.create(data=data)
+            
+            logger.debug(f"📨 Mailjet response: status={result.status_code}, body={result.json() if result.status_code < 500 else result.text[:200]}")
             
             if result.status_code == 200:
                 logger.info(f"✅ Email sent successfully to {len(to_list)} recipient(s)")
                 return result.json()
+            elif result.status_code == 401:
+                logger.error(f"🔐 Mailjet authentication failed (401). Check API keys. Response: {result.json()}")
+                raise Exception(f"Mailjet authentication error: {result.json()}")
             elif result.status_code == 429:
                 # Rate limit - attendre avant de réessayer
                 wait_time = 2 ** attempt
-                logger.warning(f"Rate limit hit (429). Waiting {wait_time}s before retry...")
+                logger.warning(f"⏳ Rate limit hit (429). Waiting {wait_time}s before retry...")
                 time.sleep(wait_time)
                 continue
             else:
-                logger.error(f"Mailjet API error: {result.status_code} - {result.json()}")
+                logger.error(f"❌ Mailjet API error: {result.status_code} - {result.json()}")
                 if attempt == max_retries - 1:
                     raise Exception(f"Mailjet API error: {result.status_code}")
                 time.sleep(2 ** attempt)
                 
         except Exception as e:
-            logger.error(f"Attempt {attempt + 1}/{max_retries} failed: {str(e)}")
+            logger.error(f"⚠️ Attempt {attempt + 1}/{max_retries} failed: {str(e)}")
+            logger.exception("Full exception details:")
             if attempt == max_retries - 1:
                 raise
             time.sleep(2 ** attempt)
