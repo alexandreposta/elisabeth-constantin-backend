@@ -1,7 +1,8 @@
 fastapi
 uvicorn[standard]
-pydantic
+pydantic[email]
 pymongo
 python-dotenv
 stripe
 python-multipart
+email-validator
