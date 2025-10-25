@@ -46,16 +46,11 @@ def list_artworks():
 @router.get("/gallery-types", response_model=List[str])
 def get_gallery_types():
     """
-    Retourne tous les types d'œuvres uniques depuis les artworks
+    DEPRECATED: Utiliser /api/artwork-types/ à la place.
+    Retourne tous les types d'œuvres depuis la collection artwork_types.
     """
-    artworks_data = artworks.get_all_artworks()
-    all_types = set()
-    
-    for artwork in artworks_data:
-        artwork_type = artwork.get('type', 'peinture')
-        all_types.add(artwork_type)
-
-    return sorted(list(all_types))
+    from app.crud import artwork_types
+    return artwork_types.get_artwork_types_names()
 
 @router.get("/by-gallery/{gallery_type}", response_model=List[ArtworkInDB])
 def get_artworks_by_gallery(gallery_type: str):
@@ -82,24 +77,11 @@ def get_artworks_by_gallery(gallery_type: str):
 @router.get("/gallery-types/all", response_model=List[str])
 def get_all_gallery_types():
     """
-    Retourne tous les types d'œuvres existants (pour l'admin)
+    Retourne tous les types d'œuvres depuis la collection artwork_types.
+    Source unique: pas de fallback vers les artworks.
     """
-    # Utiliser la nouvelle logique des types d'œuvres
-    try:
-        from app.crud import artwork_types
-        result = artwork_types.get_artwork_types_for_api()
-        return result
-    except Exception as e:
-        # Fallback vers l'ancienne logique
-        artworks_data = artworks.get_all_artworks()
-        all_types = set()
-        
-        for artwork in artworks_data:
-            artwork_type = artwork.get('type', 'paint')
-            all_types.add(artwork_type)
-        
-        result = sorted(list(all_types))
-        return result
+    from app.crud import artwork_types
+    return artwork_types.get_artwork_types_names()
 
 @router.get("/{artwork_id}", response_model=ArtworkInDB)
 def get_artwork(artwork_id: str):

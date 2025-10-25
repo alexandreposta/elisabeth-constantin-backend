@@ -1,119 +1,199 @@
+"""
+CRUD operations for artwork_types collection.
+
+Architecture propre:
+- Pas de soft delete (suppression définitive uniquement)
+- Pas de fusion avec les types des artworks
+- Normalisation des noms pour comparaisons (via normalize_string)
+- Source unique de vérité: la collection artwork_types
+"""
 from typing import List, Optional
 from app.utils.string_utils import normalize_string
 from bson.objectid import ObjectId
 from app.database import get_database
+
 
 def get_database_collection():
     """Récupère la collection artwork_types"""
     database = get_database()
     return database.artwork_types
 
+
 def get_all_artwork_types() -> List[dict]:
     """
-    Renvoie la liste de tous les types d'œuvres actifs.
+    Retourne tous les types d'œuvres depuis la collection artwork_types.
+    
+    Returns:
+        Liste de documents {_id, name, display_name}
     """
     collection = get_database_collection()
-    types = list(collection.find({}))
-    return types
+    return list(collection.find({}))
 
-def get_artwork_type_by_name(name: str) -> Optional[dict]:
+
+def get_artwork_type_by_id(type_id: str) -> Optional[dict]:
     """
-    Renvoie un type d'œuvre par son nom.
+    Récupère un type d'œuvre par son _id.
+    
+    Args:
+        type_id: L'ObjectId sous forme de string
+        
+    Returns:
+        Le document du type ou None
     """
-    collection = get_database_collection()
     try:
+        oid = ObjectId(type_id)
+    except Exception:
+        return None
+    
+    collection = get_database_collection()
+    return collection.find_one({"_id": oid})
+
+
+def get_artwork_type_by_name(name: str, normalized: bool = True) -> Optional[dict]:
+    """
+    Récupère un type d'œuvre par son nom.
+    
+    Args:
+        name: Le nom du type à chercher
+        normalized: Si True, utilise la comparaison normalisée (insensible à la casse, accents, espaces)
+        
+    Returns:
+        Le document du type ou None
+    """
+    if not name:
+        return None
+    
+    collection = get_database_collection()
+    
+    if normalized:
+        # Recherche normalisée (tolérante)
+        normalized_search = normalize_string(name)
         for type_doc in collection.find({}):
-            db_name = type_doc.get('name')
-            if normalize_string(db_name) == normalize_string(name):
+            db_name = type_doc.get('name', '')
+            if normalize_string(db_name) == normalized_search:
                 return type_doc
-    except Exception:
-        pass
-    return collection.find_one({"name": name})
+        return None
+    else:
+        # Recherche stricte
+        return collection.find_one({"name": name})
 
-def create_artwork_type(data: dict) -> str:
+
+def create_artwork_type(name: str, display_name: Optional[str] = None) -> str:
     """
-    Insère un nouveau type d'œuvre.
-    Retourne l'_id de la nouvelle entrée sous forme de chaîne.
+    Crée un nouveau type d'œuvre.
+    
+    Args:
+        name: Le nom du type (unique, normalisé)
+        display_name: Le nom d'affichage (optionnel, sinon capitalize du name)
+        
+    Returns:
+        L'_id du document créé sous forme de string
+        
+    Raises:
+        ValueError: Si le type existe déjà (comparaison normalisée)
     """
+    if not name or not name.strip():
+        raise ValueError("Le nom du type ne peut pas être vide")
+    
+    name = name.strip()
+    
+    # Vérifier l'unicité (comparaison normalisée)
+    existing = get_artwork_type_by_name(name, normalized=True)
+    if existing:
+        raise ValueError(f"Le type '{name}' existe déjà (ou un équivalent normalisé)")
+    
+    # Préparer le document
+    doc = {
+        "name": name,
+        "display_name": display_name.strip() if display_name else name.capitalize()
+    }
+    
     collection = get_database_collection()
-    
-    try:
-        for type_doc in collection.find({}):
-            if normalize_string(type_doc.get('name')) == normalize_string(data["name"]):
-                return str(type_doc["_id"])
-    except Exception:
-        existing = collection.find_one({"name": data["name"]})
-        if existing:
-            return str(existing["_id"])
-    
-    data = dict(data)
-    data.pop("_id", None)
-    
-    if "display_name" not in data or not data["display_name"]:
-        data["display_name"] = data["name"].capitalize()
-    
-    result = collection.insert_one(data)
+    result = collection.insert_one(doc)
     return str(result.inserted_id)
 
-def update_artwork_type(type_id: str, update_data: dict) -> int:
+
+def update_artwork_type(type_id: str, name: Optional[str] = None, display_name: Optional[str] = None) -> bool:
     """
     Met à jour un type d'œuvre.
-    Retourne le nombre de documents modifiés (0 ou 1).
+    
+    Args:
+        type_id: L'_id du type à modifier
+        name: Le nouveau nom (optionnel)
+        display_name: Le nouveau display_name (optionnel)
+        
+    Returns:
+        True si la mise à jour a réussi, False sinon
+        
+    Raises:
+        ValueError: Si le nouveau nom existe déjà
     """
     try:
         oid = ObjectId(type_id)
     except Exception:
-        return 0
+        return False
     
     collection = get_database_collection()
-    update_data = dict(update_data)
-    update_data.pop("_id", None)
     
-    result = collection.update_one(
-        {"_id": oid},
-        {"$set": update_data}
-    )
-    return result.modified_count
+    # Vérifier que le type existe
+    existing_type = collection.find_one({"_id": oid})
+    if not existing_type:
+        return False
+    
+    update_fields = {}
+    
+    # Si on change le nom, vérifier l'unicité
+    if name is not None:
+        name = name.strip()
+        if not name:
+            raise ValueError("Le nom du type ne peut pas être vide")
+        
+        # Vérifier que ce nom n'est pas déjà pris (sauf si c'est le même document)
+        name_conflict = get_artwork_type_by_name(name, normalized=True)
+        if name_conflict and str(name_conflict["_id"]) != type_id:
+            raise ValueError(f"Le type '{name}' existe déjà")
+        
+        update_fields["name"] = name
+    
+    if display_name is not None:
+        update_fields["display_name"] = display_name.strip() if display_name else ""
+    
+    if not update_fields:
+        return False
+    
+    result = collection.update_one({"_id": oid}, {"$set": update_fields})
+    return result.modified_count > 0
 
-def delete_artwork_type(type_id: str) -> int:
+
+def delete_artwork_type(type_id: str) -> bool:
     """
     Supprime définitivement un type d'œuvre (hard delete).
-    Retourne le nombre de documents supprimés (0 ou 1).
+    
+    Args:
+        type_id: L'_id du type à supprimer
+        
+    Returns:
+        True si la suppression a réussi, False sinon
     """
     try:
         oid = ObjectId(type_id)
     except Exception:
-        return 0
+        return False
     
     collection = get_database_collection()
     result = collection.delete_one({"_id": oid})
-    return result.deleted_count
+    return result.deleted_count > 0
 
-def get_artwork_types_for_api() -> List[str]:
+
+def get_artwork_types_names() -> List[str]:
     """
-    Retourne une liste simple des noms des types d'œuvres pour l'API.
-    Combine les types en base + les types des œuvres existantes pour la compatibilité.
+    Retourne uniquement la liste des noms de types d'œuvres.
+    Source unique: la collection artwork_types (pas de fusion avec artworks).
+    
+    Returns:
+        Liste triée des noms de types
     """
-    types_from_db = set()
-    try:
-        collection = get_database_collection()
-        types_docs = list(collection.find({}))
-        for type_doc in types_docs:
-            types_from_db.add(type_doc["name"])
-    except Exception as e:
-        pass
-    
-    types_from_artworks = set()
-    try:
-        from app.crud import artworks
-        artworks_data = artworks.get_all_artworks()
-        for artwork in artworks_data:
-            artwork_type = artwork.get('type', 'peinture')
-            types_from_artworks.add(artwork_type)
-    except Exception as e:
-        pass
-    
-    all_types = types_from_db.union(types_from_artworks)
-    result = sorted(list(all_types))
-    
-    return result
+    collection = get_database_collection()
+    types_docs = list(collection.find({}, {"name": 1}))
+    names = [doc["name"] for doc in types_docs if "name" in doc]
+    return sorted(names)
