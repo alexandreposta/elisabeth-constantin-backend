@@ -59,9 +59,17 @@ def get_artworks_by_gallery(gallery_type: str):
     """
     artworks_data = artworks.get_all_artworks()
     filtered_artworks = []
-    
+    # Tolérance d'encodage : décoder + et %XX et gérer double-encodage éventuel
+    from urllib.parse import unquote_plus
+    decoded = gallery_type
+    for _ in range(2):
+        new = unquote_plus(decoded)
+        if new == decoded:
+            break
+        decoded = new
+
     # Normaliser le type de galerie pour la comparaison (insensible à la casse, accents, espaces et caractères spéciaux)
-    normalized_gallery_type = normalize_string(gallery_type)
+    normalized_gallery_type = normalize_string(decoded)
     
     for artwork in artworks_data:
         # Normaliser le type de l'artwork de la même manière

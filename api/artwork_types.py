@@ -87,15 +87,24 @@ def delete_artwork_type(type_name: str, _: bool = Depends(require_admin_auth)):
     Raises:
         404: Si le type n'existe pas
     """
+    # Tolérance d'encodage des paramètres de path (plus et %xx, double-encodage)
+    from urllib.parse import unquote_plus
+    decoded_name = type_name
+    for _ in range(2):
+        new = unquote_plus(decoded_name)
+        if new == decoded_name:
+            break
+        decoded_name = new
+
     # Vérifier que le type existe
-    existing = types_crud.get_artwork_type_by_name(type_name, normalized=True)
+    existing = types_crud.get_artwork_type_by_name(decoded_name, normalized=True)
     if not existing:
-        raise HTTPException(status_code=404, detail=f"Le type '{type_name}' n'existe pas")
-    
+        raise HTTPException(status_code=404, detail=f"Le type '{decoded_name}' n'existe pas")
+
     type_id = str(existing["_id"])
-    
+
     # Mettre à null le type de tous les artworks concernés (via normalized matching)
-    modified_count = artworks_crud.update_artwork_type(type_name, None)
+    modified_count = artworks_crud.update_artwork_type(decoded_name, None)
     
     # Supprimer le type de la collection artwork_types
     success = types_crud.delete_artwork_type(type_id)
@@ -134,14 +143,23 @@ def update_artwork_type_endpoint(
     if not new_type:
         raise HTTPException(status_code=400, detail="Le nouveau nom de type ne peut pas être vide")
     
+    # Tolérance d'encodage du paramètre path
+    from urllib.parse import unquote_plus
+    decoded_name = type_name
+    for _ in range(2):
+        new = unquote_plus(decoded_name)
+        if new == decoded_name:
+            break
+        decoded_name = new
+
     # Vérifier que l'ancien type existe
-    existing_old = types_crud.get_artwork_type_by_name(type_name, normalized=True)
+    existing_old = types_crud.get_artwork_type_by_name(decoded_name, normalized=True)
     if not existing_old:
-        raise HTTPException(status_code=404, detail=f"Le type '{type_name}' n'existe pas")
-    
+        raise HTTPException(status_code=404, detail=f"Le type '{decoded_name}' n'existe pas")
+
     # Vérifier que le nouveau nom est différent (comparaison normalisée)
     from app.utils.string_utils import normalize_string
-    if normalize_string(type_name) == normalize_string(new_type):
+    if normalize_string(decoded_name) == normalize_string(new_type):
         raise HTTPException(status_code=400, detail="Le nouveau type doit être différent de l'ancien")
     
     # Vérifier que le nouveau nom n'est pas déjà pris
@@ -161,17 +179,17 @@ def update_artwork_type_endpoint(
             name=new_type,
             display_name=request.display_name
         )
-        
+
         if not success:
             raise HTTPException(status_code=500, detail="Erreur lors de la mise à jour du type")
-        
+
         # Mettre à jour tous les artworks ayant ce type
-        modified_count = artworks_crud.update_artwork_type(type_name, new_type)
-        
+        modified_count = artworks_crud.update_artwork_type(decoded_name, new_type)
+
         return {
-            "message": f"Type '{type_name}' modifié en '{new_type}' avec succès",
+            "message": f"Type '{decoded_name}' modifié en '{new_type}' avec succès",
             "artworks_updated": modified_count
         }
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
