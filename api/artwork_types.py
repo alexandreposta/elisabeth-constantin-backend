@@ -43,7 +43,6 @@ def create_artwork_type(request: CreateTypeRequest, _: bool = Depends(require_ad
     type_data = {
         "name": type_name,
         "display_name": type_name.capitalize(),
-        "is_active": True
     }
     types_crud.create_artwork_type(type_data)
     
@@ -104,7 +103,6 @@ def update_artwork_type_endpoint(type_name: str, request: UpdateTypeRequest, _: 
         types_crud.create_artwork_type({
             "name": new_type,
             "display_name": new_type.capitalize(),
-            "is_active": True
         })
     
     # Mettre à jour le type de tous les artworks

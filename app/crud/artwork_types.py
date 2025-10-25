@@ -13,7 +13,7 @@ def get_all_artwork_types() -> List[dict]:
     Renvoie la liste de tous les types d'œuvres actifs.
     """
     collection = get_database_collection()
-    types = list(collection.find({"is_active": True}))
+    types = list(collection.find({}))
     return types
 
 def get_artwork_type_by_name(name: str) -> Optional[dict]:
@@ -21,15 +21,13 @@ def get_artwork_type_by_name(name: str) -> Optional[dict]:
     Renvoie un type d'œuvre par son nom.
     """
     collection = get_database_collection()
-    # Recherche tolérante : comparer la version normalisée (minuscules, sans espaces/accents)
     try:
-        for type_doc in collection.find():
+        for type_doc in collection.find({}):
             db_name = type_doc.get('name')
             if normalize_string(db_name) == normalize_string(name):
                 return type_doc
     except Exception:
         pass
-    # Fallback strict
     return collection.find_one({"name": name})
 
 def create_artwork_type(data: dict) -> str:
@@ -39,20 +37,20 @@ def create_artwork_type(data: dict) -> str:
     """
     collection = get_database_collection()
     
-    # Vérifier si le type existe déjà
-    existing = collection.find_one({"name": data["name"]})
-    if existing:
-        return str(existing["_id"])
+    try:
+        for type_doc in collection.find({}):
+            if normalize_string(type_doc.get('name')) == normalize_string(data["name"]):
+                return str(type_doc["_id"])
+    except Exception:
+        existing = collection.find_one({"name": data["name"]})
+        if existing:
+            return str(existing["_id"])
     
-    # Créer le nouveau type
     data = dict(data)
     data.pop("_id", None)
     
-    # Valeurs par défaut
     if "display_name" not in data or not data["display_name"]:
         data["display_name"] = data["name"].capitalize()
-    if "is_active" not in data:
-        data["is_active"] = True
     
     result = collection.insert_one(data)
     return str(result.inserted_id)
@@ -79,8 +77,8 @@ def update_artwork_type(type_id: str, update_data: dict) -> int:
 
 def delete_artwork_type(type_id: str) -> int:
     """
-    Désactive un type d'œuvre (soft delete).
-    Retourne le nombre de documents modifiés (0 ou 1).
+    Supprime définitivement un type d'œuvre (hard delete).
+    Retourne le nombre de documents supprimés (0 ou 1).
     """
     try:
         oid = ObjectId(type_id)
@@ -88,28 +86,23 @@ def delete_artwork_type(type_id: str) -> int:
         return 0
     
     collection = get_database_collection()
-    result = collection.update_one(
-        {"_id": oid},
-        {"$set": {"is_active": False}}
-    )
-    return result.modified_count
+    result = collection.delete_one({"_id": oid})
+    return result.deleted_count
 
 def get_artwork_types_for_api() -> List[str]:
     """
     Retourne une liste simple des noms des types d'œuvres pour l'API.
     Combine les types en base + les types des œuvres existantes pour la compatibilité.
     """
-    # Récupérer les types de la collection dédiée
     types_from_db = set()
     try:
         collection = get_database_collection()
-        types_docs = list(collection.find({"is_active": True}))
+        types_docs = list(collection.find({}))
         for type_doc in types_docs:
             types_from_db.add(type_doc["name"])
     except Exception as e:
         pass
     
-    # Récupérer aussi les types des œuvres existantes pour la compatibilité
     types_from_artworks = set()
     try:
         from app.crud import artworks
@@ -120,7 +113,6 @@ def get_artwork_types_for_api() -> List[str]:
     except Exception as e:
         pass
     
-    # Combiner les deux sources
     all_types = types_from_db.union(types_from_artworks)
     result = sorted(list(all_types))
     
