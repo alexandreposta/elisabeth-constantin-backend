@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, BackgroundTasks
 from typing import List
 from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
 from app.crud import artworks
+from app.utils.string_utils import normalize_string
 from fastapi import Depends
 from api.auth_admin import require_admin_auth
 from app.services.email.notifications import notify_new_artwork, notify_removed_artwork
@@ -50,13 +51,13 @@ def get_artworks_by_gallery(gallery_type: str):
     artworks_data = artworks.get_all_artworks()
     filtered_artworks = []
     
-    # Normaliser le type de galerie pour la comparaison (insensible à la casse et aux espaces)
-    normalized_gallery_type = gallery_type.lower().replace(" ", "").replace("-", "").replace("_", "")
+    # Normaliser le type de galerie pour la comparaison (insensible à la casse, accents, espaces et caractères spéciaux)
+    normalized_gallery_type = normalize_string(gallery_type)
     
     for artwork in artworks_data:
         # Normaliser le type de l'artwork de la même manière
-        artwork_type = artwork.get('type', 'paint')
-        normalized_artwork_type = artwork_type.lower().replace(" ", "").replace("-", "").replace("_", "")
+        artwork_type = artwork.get('type', '') or ''
+        normalized_artwork_type = normalize_string(artwork_type)
         
         # Filtrer seulement par type, pas par statut (afficher toutes les œuvres)
         if normalized_artwork_type == normalized_gallery_type:

@@ -1,4 +1,5 @@
 from typing import List, Optional
+from app.utils.string_utils import normalize_string
 from bson.objectid import ObjectId
 from app.database import get_database
 
@@ -20,6 +21,15 @@ def get_artwork_type_by_name(name: str) -> Optional[dict]:
     Renvoie un type d'œuvre par son nom.
     """
     collection = get_database_collection()
+    # Recherche tolérante : comparer la version normalisée (minuscules, sans espaces/accents)
+    try:
+        for type_doc in collection.find():
+            db_name = type_doc.get('name')
+            if normalize_string(db_name) == normalize_string(name):
+                return type_doc
+    except Exception:
+        pass
+    # Fallback strict
     return collection.find_one({"name": name})
 
 def create_artwork_type(data: dict) -> str:
