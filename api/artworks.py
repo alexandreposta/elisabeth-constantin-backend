@@ -21,6 +21,20 @@ def serialize_artwork(raw: dict) -> dict:
         "other_images": raw.get("other_images", []),
         "status": raw.get("status", "Disponible")
     }
+
+    # Générer une vignette si l'image principale est hébergée sur Cloudinary
+    try:
+        main_image = raw.get('main_image', '') or ''
+        if main_image and 'res.cloudinary.com' in main_image and '/upload/' in main_image:
+            parts = main_image.split('/upload/')
+            prefix, suffix = parts[0], parts[1]
+            thumb_transform = 'upload/f_auto,q_auto,w_600/'
+            thumbnail = prefix + '/' + thumb_transform + suffix
+            result['thumbnail'] = thumbnail
+        else:
+            result['thumbnail'] = raw.get('thumbnail') if raw.get('thumbnail') else None
+    except Exception:
+        result['thumbnail'] = raw.get('thumbnail') if raw.get('thumbnail') else None
     return result
 
 @router.get("/", response_model=List[ArtworkInDB])
