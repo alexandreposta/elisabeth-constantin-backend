@@ -48,7 +48,7 @@ async def mailerlite_webhook_subscriber_updated(request: Request):
     """
     try:
         payload = await request.json()
-        logger.info(f"Received MailerLite webhook: {payload}")
+        logger.debug(f"Received MailerLite webhook: {payload}")
         
         # Valider le secret si configuré
         if WEBHOOK_SECRET:
@@ -89,20 +89,20 @@ async def mailerlite_webhook_subscriber_updated(request: Request):
                         promo_code = f"EC10-{secrets.token_hex(3).upper()}"
                     
                     subscriber_repo.confirm(email, promo_code)
-                    logger.info(f"✅ Subscriber confirmed via webhook: {email}")
+                    logger.debug(f"Subscriber confirmed via webhook: {email}")
             
             elif event_type == "subscriber.unsubscribed" or mailerlite_status == "unsubscribed":
                 if existing.get("status") != SubscriberStatus.UNSUBSCRIBED.value:
                     subscriber_repo.unsubscribe(email, "Unsubscribed via MailerLite")
-                    logger.info(f"📭 Subscriber unsubscribed via webhook: {email}")
+                    logger.debug(f"Subscriber unsubscribed via webhook: {email}")
             
             elif event_type == "subscriber.bounced" or mailerlite_status == "bounced":
                 subscriber_repo.mark_bounced(email)
-                logger.info(f"⚠️ Subscriber bounced via webhook: {email}")
+                logger.debug(f"Subscriber bounced via webhook: {email}")
             
             elif event_type == "subscriber.complaint" or mailerlite_status == "junk":
                 subscriber_repo.mark_complained(email)
-                logger.info(f"⚠️ Subscriber complained via webhook: {email}")
+                logger.debug(f"Subscriber complained via webhook: {email}")
         
         return {"status": "success", "processed": len(events)}
     

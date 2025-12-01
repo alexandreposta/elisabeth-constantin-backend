@@ -138,14 +138,15 @@ async def subscribe_to_newsletter(request: SubscribeRequest, req: Request):
     if not mailerlite_result:
         logger.warning(f"Failed to add subscriber to MailerLite: {email}")
     else:
-        logger.info(f"✅ Subscriber added to MailerLite with double opt-in: {email}")
+        logger.debug(f"Subscriber added to MailerLite with double opt-in: {email}")
     
-    logger.info(f"✅ New subscriber (pending confirmation): {email}")
+    logger.debug(f"New subscriber (pending confirmation): {email}")
     
     return {
         "message": "Email de vérification envoyé.",
         "email": email,
-        "status": "pending"
+        "status": "pending",
+        "benefit": "Vous recevrez 10% de réduction sur votre premier achat une fois confirmé !"
     }
 
 
@@ -210,7 +211,7 @@ async def confirm_subscription(token: str = Query(..., description="Token JWT de
     # Marquer l'abonné comme actif dans MailerLite
     mark_subscriber_confirmed(email)
     
-    logger.info(f"✅ Subscriber confirmed: {email} - Promo: {promo_code}")
+    logger.debug(f"Subscriber confirmed: {email} - Promo: {promo_code}")
     
     # Rediriger vers la page de confirmation avec le code promo
     return RedirectResponse(
@@ -260,7 +261,7 @@ async def unsubscribe_from_newsletter(request: UnsubscribeRequest):
     # Retirer de MailerLite
     mark_subscriber_unsubscribed(email)
     
-    logger.info(f"📭 Subscriber unsubscribed: {email}")
+    logger.debug(f"Subscriber unsubscribed: {email}")
     
     return {
         "message": "Vous avez été désinscrit de la newsletter avec succès.",
@@ -301,6 +302,86 @@ async def get_subscriber_stats():
     return SubscriberStats(**stats)
 
 
+@router.get("/check-subscriber/{email}")
+async def check_subscriber_status(email: str):
+    """
+    Vérifie si un email est abonné et actif pour appliquer une réduction.
+    Retourne le code promo si l'abonné est confirmé ET n'a pas encore utilisé son code.
+    """
+    # Nettoyer et normaliser l'email
+    clean_email = email.strip().lower()
+    logger.debug(f"Checking subscriber status for: {clean_email}")
+    
+    subscriber = subscriber_repo.get_by_email(clean_email)
+    
+    if not subscriber:
+        logger.debug(f"Subscriber not found: {clean_email}")
+        return {
+            "is_subscriber": False,
+            "discount": 0,
+            "promo_code": None
+        }
+    
+    logger.debug(f"Subscriber found - Status: {subscriber.get('status')}, Promo used: {subscriber.get('promo_used', False)}")
+    
+    # Vérifier si l'abonné est confirmé
+    if subscriber.get("status") == SubscriberStatus.CONFIRMED.value:
+        # Vérifier si le promo a déjà été utilisé
+        if subscriber.get("promo_used", False):
+            logger.debug(f"Promo already used for: {clean_email}")
+            return {
+                "is_subscriber": True,
+                "discount": 0,
+                "promo_code": None,
+                "message": "Code promo déjà utilisé"
+            }
+        
+        logger.debug(f"Discount applicable for: {clean_email}")
+        return {
+            "is_subscriber": True,
+            "discount": 10,  # 10% de réduction
+            "promo_code": subscriber.get("promo_code"),
+            "message": "Réduction abonné newsletter appliquée"
+        }
+    
+    return {
+        "is_subscriber": False,
+        "discount": 0,
+        "promo_code": None
+    }
+
+
+@router.post("/mark-promo-used/{email}")
+async def mark_promo_as_used(email: str):
+    """
+    Marque le code promo comme utilisé pour un email.
+    Appelé après un paiement réussi.
+    """
+    clean_email = email.strip().lower()
+    subscriber = subscriber_repo.get_by_email(clean_email)
+    
+    if not subscriber:
+        raise HTTPException(
+            status_code=404,
+            detail="Abonné introuvable"
+        )
+    
+    # Marquer comme utilisé
+    success = subscriber_repo.update(clean_email, {
+        "promo_used": True,
+        "promo_used_at": datetime.utcnow()
+    })
+    
+    if success:
+        logger.debug(f"Promo code marked as used for: {clean_email}")
+        return {"message": "Code promo marqué comme utilisé"}
+    
+    raise HTTPException(
+        status_code=500,
+        detail="Erreur lors de la mise à jour"
+    )
+
+
 class ResendConfirmationRequest(BaseModel):
     """Requête de renvoi d'email de confirmation"""
     email: EmailStr
@@ -335,7 +416,7 @@ async def resend_confirmation(request: ResendConfirmationRequest):
     subscriber_repo.update(email, {"confirmation_token": confirmation_token})
     
     # MailerLite gère le renvoi automatiquement via le double opt-in
-    logger.info(f"Confirmation email will be resent by MailerLite for {email}")
+    logger.debug(f"Confirmation email will be resent by MailerLite for {email}")
     
     return {
         "message": "Email de confirmation renvoyé avec succès"
