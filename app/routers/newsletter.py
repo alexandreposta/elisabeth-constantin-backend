@@ -74,13 +74,32 @@ async def subscribe_to_newsletter(request: SubscribeRequest, req: Request):
         if existing.get("status") == SubscriberStatus.CONFIRMED.value:
             raise HTTPException(
                 status_code=409,
-                detail="Cet email est déjà abonné à la newsletter"
+                detail="Adresse email déjà abonnée."
             )
         
-        # Si pending, MailerLite gère le renvoi automatiquement
-        if existing.get("status") == SubscriberStatus.PENDING.value:
+        # Si désabonné, permettre la réinscription
+        if existing.get("status") == SubscriberStatus.UNSUBSCRIBED.value:
+            # Réinitialiser le statut à pending
+            subscriber_repo.update(email, {
+                "status": SubscriberStatus.PENDING.value,
+                "consent_accepted": True,
+                "consent_ip": client_ip,
+                "consent_user_agent": user_agent,
+                "unsubscribed_at": None,
+                "unsubscribe_reason": None
+            })
+            # Renvoyer via MailerLite
+            mailerlite_result = ensure_newsletter_subscriber(email=email)
             return {
-                "message": "Vous êtes déjà inscrit. Veuillez vérifier votre boîte email pour le lien de confirmation."
+                "message": "Email de vérification envoyé."
+            }
+        
+        # Si pending, renvoyer l'email de confirmation
+        if existing.get("status") == SubscriberStatus.PENDING.value:
+            # Renvoyer via MailerLite
+            mailerlite_result = ensure_newsletter_subscriber(email=email)
+            return {
+                "message": "Email de vérification renvoyé."
             }
     
     # Récupérer IP et User Agent pour RGPD
@@ -124,7 +143,7 @@ async def subscribe_to_newsletter(request: SubscribeRequest, req: Request):
     logger.info(f"✅ New subscriber (pending confirmation): {email}")
     
     return {
-        "message": "Inscription réussie ! Un email de confirmation vous a été envoyé.",
+        "message": "Email de vérification envoyé.",
         "email": email,
         "status": "pending"
     }

@@ -61,6 +61,14 @@ app.include_router(newsletter_router, prefix="/api/newsletter", tags=["newslette
 # Ancien endpoint de souscription (deprecated - à garder pour compatibilité temporaire)
 app.include_router(subscribe_router_old, prefix="/api/subscribe", tags=["subscribe-deprecated"])
 
+# Webhook MailerLite pour synchroniser les statuts
+try:
+    from api.webhook_mailerlite import router as webhook_router
+    app.include_router(webhook_router, prefix="/api/webhooks/mailerlite", tags=["webhooks"])
+except ImportError:
+    from .webhook_mailerlite import router as webhook_router
+    app.include_router(webhook_router, prefix="/api/webhooks/mailerlite", tags=["webhooks"])
+
 @app.get("/")
 async def root():
     return {
