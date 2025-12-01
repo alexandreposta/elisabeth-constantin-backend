@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nouvel événement</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Georgia', 'Times New Roman', serif; 
+      background: #fafaf9; 
+      color: #1a1a1a; 
+      margin: 0; 
+      padding: 0; 
+      line-height: 1.6;
+    }
+    .wrapper { 
+      max-width: 640px; 
+      margin: 0 auto; 
+      padding: 40px 20px; 
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 32px;
+      border-bottom: 1px solid #e5e5e4;
+      margin-bottom: 32px;
+    }
+    .logo {
+      font-family: 'Garamond', 'Georgia', serif;
+      font-size: 32px;
+      font-weight: 300;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+    .tagline {
+      font-family: 'Helvetica', 'Arial', sans-serif;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #78716c;
+      font-weight: 400;
+    }
+    .card { 
+      background: #ffffff; 
+      border-radius: 2px; 
+      overflow: hidden; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .hero img { 
+      width: 100%; 
+      display: block; 
+      object-fit: cover; 
+      max-height: 380px; 
+    }
+    .content { 
+      padding: 32px 28px; 
+    }
+    h1 { 
+      font-family: 'Garamond', 'Georgia', serif;
+      margin: 0 0 16px; 
+      font-size: 28px; 
+      font-weight: 400;
+      letter-spacing: 0.5px; 
+      color: #1a1a1a;
+      line-height: 1.3;
+    }
+    p { 
+      font-family: 'Helvetica', 'Arial', sans-serif;
+      margin: 0 0 20px; 
+      line-height: 1.7; 
+      color: #44403c; 
+      font-size: 15px;
+    }
+    .event-info { 
+      margin: 28px 0;
+      padding: 24px;
+      background: #fafaf9;
+      border-left: 3px solid #ea580c;
+    }
+    .info-item {
+      font-family: 'Helvetica', 'Arial', sans-serif;
+      margin-bottom: 16px;
+    }
+    .info-item:last-child {
+      margin-bottom: 0;
+    }
+    .info-label {
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 1px;
+      color: #a8a29e;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .info-value {
+      font-size: 15px;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+    .cta-wrapper {
+      text-align: center;
+      margin-top: 32px;
+    }
+    .cta { 
+      display: inline-block; 
+      padding: 16px 48px; 
+      background: #1a1a1a;
+      color: #ffffff; 
+      text-decoration: none; 
+      font-family: 'Helvetica', 'Arial', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+      border-radius: 2px;
+    }
+    .cta:hover { 
+      background: #ea580c;
+    }
+    .footer { 
+      margin-top: 48px; 
+      padding: 24px 20px; 
+      text-align: center; 
+      font-family: 'Helvetica', 'Arial', sans-serif;
+      font-size: 11px; 
+      color: #a8a29e; 
+      border-top: 1px solid #e5e5e4;
+    }
+    .footer p {
+      font-size: 11px;
+      color: #a8a29e;
+      margin-bottom: 8px;
+    }
+    .footer a { 
+      color: #78716c; 
+      text-decoration: underline;
+      transition: color 0.2s;
+    }
+    .footer a:hover {
+      color: #ea580c;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <div class="logo">Elisabeth Constantin</div>
+      <div class="tagline">Artiste Peintre</div>
+    </div>
+    
+    <div class="card">
+      <div class="hero">
+        <img src="{{image_url}}" alt="{{title}}" />
+      </div>
+      <div class="content">
+        <h1>{{title}}</h1>
+        <p>{{description}}</p>
+        
+        <div class="event-info">
+          <div class="info-item">
+            <div class="info-label">Dates</div>
+            <div class="info-value">{{schedule}}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Horaires</div>
+            <div class="info-value">{{time_range}}</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Lieu</div>
+            <div class="info-value">{{location}}</div>
+          </div>
+        </div>
+        
+        <div class="cta-wrapper">
+          <a class="cta" href="{{link}}">Découvrir l'événement</a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>Vous recevez cet email car vous êtes inscrit à notre newsletter.</p>
+      <p><a href="{{unsubscribe_url}}">Se désabonner</a></p>
+    </div>
+  </div>
+</body>
+</html>

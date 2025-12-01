@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, BackgroundTasks
 from typing import List
 from app.models.event import Event
 from app.crud.events import get_all_events, get_event_by_id, create_event, update_event, delete_event
 from api.auth_admin import require_admin_auth
+from app.services.email.notifications import notify_new_event
 
 router = APIRouter()
 
@@ -33,7 +34,12 @@ def read_event(event_id: str):
     return serialize_event(event)
 
 @router.post("/", response_model=dict)
-def create_event_endpoint(event: Event, request: Request = None, _: bool = Depends(require_admin_auth)):
+def create_event_endpoint(
+    event: Event,
+    background_tasks: BackgroundTasks,
+    request: Request = None,
+    _: bool = Depends(require_admin_auth)
+):
     """
     Crée un nouvel événement.
     """
@@ -42,6 +48,7 @@ def create_event_endpoint(event: Event, request: Request = None, _: bool = Depen
     created_event = get_event_by_id(event_id)
     if not created_event:
         raise HTTPException(status_code=500, detail="Erreur lors de la récupération de l'événement créé")
+    background_tasks.add_task(notify_new_event, event_id)
     return serialize_event(created_event)
 
 @router.put("/{event_id}", response_model=dict)

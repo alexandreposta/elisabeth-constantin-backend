@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bienvenue</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 0; }
+    .wrapper { max-width: 640px; margin: 0 auto; padding: 32px 24px; }
+    .card { background: linear-gradient(145deg, #0b1224, #111827); border-radius: 18px; padding: 32px; box-shadow: 0 18px 60px rgba(0,0,0,0.25); }
+    h1 { margin: 0 0 12px; font-size: 26px; letter-spacing: -0.02em; }
+    p { line-height: 1.6; margin: 0 0 16px; color: #cbd5e1; }
+    .code { background: #f97316; color: #0f172a; padding: 14px 18px; display: inline-block; border-radius: 12px; font-weight: 800; letter-spacing: 0.08em; box-shadow: 0 14px 30px rgba(249,115,22,0.32); }
+    .pill { display: inline-block; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.08); color: #e2e8f0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+    .footer { margin-top: 20px; font-size: 13px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="pill">Merci</div>
+      <h1>Ravi de vous compter parmi nous</h1>
+      <p>Votre inscription est confirmée. Voici votre avantage exclusif à utiliser sur la prochaine commande.</p>
+      <p style="margin: 22px 0;">
+        <span class="code">{{promo_code}}</span>
+      </p>
+      <p class="footer">Besoin d'aide ? Répondez directement à cet email et nous reviendrons vers vous rapidement.</p>
+    </div>
+  </div>
+</body>
+</html>

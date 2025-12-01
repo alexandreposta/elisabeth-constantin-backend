@@ -25,16 +25,18 @@ from app.services.email.jwt_utils import (
     verify_confirmation_token,
     verify_unsubscribe_token
 )
-from app.services.email.mailjet_client import (
-    send_confirmation_email,
-    send_welcome_email
+from app.services.email.mailerlite_client import (
+    ensure_newsletter_subscriber,
+    mark_subscriber_confirmed,
+    mark_subscriber_unsubscribed,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # URL de base du frontend (pour les redirections)
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+_FRONTEND_RAW = os.getenv("FRONTEND_URL", "http://localhost:5173")
+FRONTEND_URL = _FRONTEND_RAW.split(",")[0].strip() if _FRONTEND_RAW else "http://localhost:5173"
 
 
 @router.post("/subscribe", response_model=dict)
@@ -75,12 +77,10 @@ async def subscribe_to_newsletter(request: SubscribeRequest, req: Request):
                 detail="Cet email est déjà abonné à la newsletter"
             )
         
-        # Si pending, renvoyer l'email de confirmation
+        # Si pending, MailerLite gère le renvoi automatiquement
         if existing.get("status") == SubscriberStatus.PENDING.value:
-            confirmation_token = generate_confirmation_token(email)
-            send_confirmation_email(email, confirmation_token, FRONTEND_URL)
             return {
-                "message": "Email de confirmation renvoyé. Veuillez vérifier votre boîte email."
+                "message": "Vous êtes déjà inscrit. Veuillez vérifier votre boîte email pour le lien de confirmation."
             }
     
     # Récupérer IP et User Agent pour RGPD
@@ -110,15 +110,18 @@ async def subscribe_to_newsletter(request: SubscribeRequest, req: Request):
             status_code=500,
             detail="Erreur lors de l'inscription. Veuillez réessayer."
         )
+
+    # Ajouter dans MailerLite avec double opt-in
+    # MailerLite enverra automatiquement l'email de confirmation si:
+    # Account Settings → Subscribe Settings → "Double opt-in for API" est activé
+    mailerlite_result = ensure_newsletter_subscriber(email=email)
     
-    # Envoyer l'email de confirmation
-    email_sent = send_confirmation_email(email, confirmation_token, FRONTEND_URL)
+    if not mailerlite_result:
+        logger.warning(f"Failed to add subscriber to MailerLite: {email}")
+    else:
+        logger.info(f"✅ Subscriber added to MailerLite with double opt-in: {email}")
     
-    if not email_sent:
-        logger.warning(f"Failed to send confirmation email to {email}")
-        # Ne pas bloquer l'inscription, mais logger
-    
-    logger.info(f"✅ New subscriber (pending): {email}")
+    logger.info(f"✅ New subscriber (pending confirmation): {email}")
     
     return {
         "message": "Inscription réussie ! Un email de confirmation vous a été envoyé.",
@@ -184,12 +187,9 @@ async def confirm_subscription(token: str = Query(..., description="Token JWT de
             url=f"{FRONTEND_URL}/newsletter/error?reason=update_failed",
             status_code=302
         )
-    
-    # Envoyer l'email de bienvenue
-    welcome_sent = send_welcome_email(email, promo_code)
-    
-    if not welcome_sent:
-        logger.warning(f"Failed to send welcome email to {email}")
+
+    # Marquer l'abonné comme actif dans MailerLite
+    mark_subscriber_confirmed(email)
     
     logger.info(f"✅ Subscriber confirmed: {email} - Promo: {promo_code}")
     
@@ -237,6 +237,9 @@ async def unsubscribe_from_newsletter(request: UnsubscribeRequest):
             status_code=500,
             detail="Erreur lors de la désinscription"
         )
+
+    # Retirer de MailerLite
+    mark_subscriber_unsubscribed(email)
     
     logger.info(f"📭 Subscriber unsubscribed: {email}")
     
@@ -250,7 +253,8 @@ async def unsubscribe_from_newsletter(request: UnsubscribeRequest):
 async def unsubscribe_get(token: str = Query(..., description="Token de désinscription")):
     """
     Endpoint GET de désinscription (lien dans les emails).
-    Redirige vers une page de confirmation de désinscription.
+    Redirige vers une page de confirmation de désinscription avec le token.
+    L'utilisateur devra confirmer sa désinscription sur le frontend.
     """
     # Vérifier le token
     email = verify_unsubscribe_token(token)
@@ -261,20 +265,9 @@ async def unsubscribe_get(token: str = Query(..., description="Token de désinsc
             status_code=302
         )
     
-    # Désinscrire directement
-    success = subscriber_repo.unsubscribe(email, "Désinscription via lien email")
-    
-    if not success:
-        return RedirectResponse(
-            url=f"{FRONTEND_URL}/newsletter/error?reason=unsubscribe_failed",
-            status_code=302
-        )
-    
-    logger.info(f"📭 Subscriber unsubscribed via link: {email}")
-    
-    # Rediriger vers une page de confirmation
+    # Rediriger vers la page de confirmation avec le token
     return RedirectResponse(
-        url=f"{FRONTEND_URL}/newsletter/unsubscribed",
+        url=f"{FRONTEND_URL}/newsletter/unsubscribe?token={token}",
         status_code=302
     )
 
@@ -322,14 +315,8 @@ async def resend_confirmation(request: ResendConfirmationRequest):
     # Mettre à jour le token
     subscriber_repo.update(email, {"confirmation_token": confirmation_token})
     
-    # Renvoyer l'email
-    email_sent = send_confirmation_email(email, confirmation_token, FRONTEND_URL)
-    
-    if not email_sent:
-        raise HTTPException(
-            status_code=500,
-            detail="Erreur lors de l'envoi de l'email"
-        )
+    # MailerLite gère le renvoi automatiquement via le double opt-in
+    logger.info(f"Confirmation email will be resent by MailerLite for {email}")
     
     return {
         "message": "Email de confirmation renvoyé avec succès"

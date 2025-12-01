@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirmation newsletter</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 0; }
+    .wrapper { max-width: 640px; margin: 0 auto; padding: 32px 24px; }
+    .card { background: linear-gradient(135deg, #111827, #0b1224); border-radius: 18px; padding: 32px; box-shadow: 0 18px 60px rgba(0,0,0,0.25); }
+    h1 { margin: 0 0 12px; font-size: 26px; letter-spacing: -0.02em; }
+    p { line-height: 1.5; margin: 0 0 18px; color: #cbd5e1; }
+    .cta { display: inline-block; padding: 14px 22px; border-radius: 999px; background: #f97316; color: #0f172a; font-weight: 700; text-decoration: none; box-shadow: 0 12px 30px rgba(249,115,22,0.35); }
+    .cta:hover { background: #fb923c; }
+    .badge { display: inline-block; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.08); color: #e2e8f0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
+    .footer { margin-top: 22px; font-size: 13px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="badge">Newsletter</div>
+      <h1>Bienvenue chez Elisabeth Constantin</h1>
+      <p>Merci pour votre inscription. Cliquez ci-dessous pour confirmer votre email et recevoir les prochaines nouveautés.</p>
+      <p style="margin: 24px 0;">
+        <a class="cta" href="{{confirmation_url}}">Confirmer mon inscription</a>
+      </p>
+      <p class="footer">Ce lien reste actif pendant 48h. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.</p>
+    </div>
+  </div>
+</body>
+</html>
