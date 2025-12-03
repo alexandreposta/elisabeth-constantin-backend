@@ -1,37 +1,53 @@
-from fastapi import APIRouter, HTTPException, Request, Depends, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Request, Depends, BackgroundTasks, Query
 from typing import List
 from app.models.event import Event
 from app.crud.events import get_all_events, get_event_by_id, create_event, update_event, delete_event
 from api.auth_admin import require_admin_auth
 from app.services.email.notifications import notify_new_event
+from app.database import events_collection
+from app.services.translation import apply_dynamic_translations
+
+SUPPORTED_LANGUAGES = {"fr", "en"}
+TRANSLATABLE_EVENT_FIELDS = ("title", "description", "location", "status")
+
+
+def resolve_language(lang: str) -> str:
+    if not lang:
+        return "fr"
+    normalized = lang.lower()
+    return normalized if normalized in SUPPORTED_LANGUAGES else "fr"
 
 router = APIRouter()
 
-def serialize_event(raw: dict) -> dict:
+def serialize_event(raw: dict, lang: str = "fr") -> dict:
     """
     Convertit l'ObjectId MongoDB en string et remplace _id par id pour le frontend.
     """
-    raw["id"] = str(raw["_id"])  # Le frontend attend 'id'
-    del raw["_id"]  # Supprimer _id car on a maintenant 'id'
-    return raw
+    translated = apply_dynamic_translations(raw, TRANSLATABLE_EVENT_FIELDS, lang, events_collection)
+    event_payload = dict(translated)
+    event_payload["id"] = str(translated["_id"])
+    event_payload.pop("_id", None)
+    return event_payload
 
 @router.get("/", response_model=List[dict])
-def read_events():
+def read_events(lang: str = Query("fr")):
     """
     Retourne la liste de tous les événements.
     """
+    language = resolve_language(lang)
     events = get_all_events()
-    return [serialize_event(event) for event in events]
+    return [serialize_event(event, language) for event in events]
 
 @router.get("/{event_id}", response_model=dict)
-def read_event(event_id: str):
+def read_event(event_id: str, lang: str = Query("fr")):
     """
     Retourne un événement par son ID.
     """
+    language = resolve_language(lang)
     event = get_event_by_id(event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Événement non trouvé")
-    return serialize_event(event)
+    return serialize_event(event, language)
 
 @router.post("/", response_model=dict)
 def create_event_endpoint(

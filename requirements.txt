@@ -8,3 +8,4 @@ python-multipart
 email-validator
 pyjwt
 requests
+openai>=1.57.0

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Query
 from typing import List
 from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
 from app.crud import artworks
@@ -6,25 +6,38 @@ from app.utils.string_utils import normalize_string
 from fastapi import Depends
 from api.auth_admin import require_admin_auth
 from app.services.email.notifications import notify_new_artwork, notify_removed_artwork
+from app.database import artworks_collection
+from app.services.translation import apply_dynamic_translations
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-def serialize_artwork(raw: dict) -> dict:
+SUPPORTED_LANGUAGES = {"fr", "en"}
+TRANSLATABLE_ARTWORK_FIELDS = ("title", "description", "type", "status")
+
+
+def resolve_language(lang: str) -> str:
+    if not lang:
+        return "fr"
+    normalized = lang.lower()
+    return normalized if normalized in SUPPORTED_LANGUAGES else "fr"
+
+def serialize_artwork(raw: dict, lang: str = "fr") -> dict:
     """
     Convertit le BSON ObjectId en str pour la sérialisation JSON.
     """
+    translated_doc = apply_dynamic_translations(raw, TRANSLATABLE_ARTWORK_FIELDS, lang, artworks_collection)
     result = {
-        **raw,
-        "_id": str(raw["_id"]),
-        "other_images": raw.get("other_images", []),
-        "status": raw.get("status", "Disponible")
+        **translated_doc,
+        "_id": str(translated_doc["_id"]),
+        "other_images": translated_doc.get("other_images", []),
+        "status": translated_doc.get("status", "Disponible")
     }
 
     # Générer une vignette si l'image principale est hébergée sur Cloudinary
     try:
-        main_image = raw.get('main_image', '') or ''
+        main_image = translated_doc.get('main_image', '') or ''
         if main_image and 'res.cloudinary.com' in main_image and '/upload/' in main_image:
             parts = main_image.split('/upload/')
             prefix, suffix = parts[0], parts[1]
@@ -32,15 +45,16 @@ def serialize_artwork(raw: dict) -> dict:
             thumbnail = prefix + '/' + thumb_transform + suffix
             result['thumbnail'] = thumbnail
         else:
-            result['thumbnail'] = raw.get('thumbnail') if raw.get('thumbnail') else None
+            result['thumbnail'] = translated_doc.get('thumbnail') if translated_doc.get('thumbnail') else None
     except Exception:
-        result['thumbnail'] = raw.get('thumbnail') if raw.get('thumbnail') else None
+        result['thumbnail'] = translated_doc.get('thumbnail') if translated_doc.get('thumbnail') else None
     return result
 
 @router.get("/", response_model=List[ArtworkInDB])
-def list_artworks():
+def list_artworks(lang: str = Query("fr")):
+    language = resolve_language(lang)
     raws = artworks.get_all_artworks()
-    serialized = [serialize_artwork(a) for a in raws]
+    serialized = [serialize_artwork(a, language) for a in raws]
     return serialized
 
 @router.get("/gallery-types", response_model=List[str])
@@ -53,10 +67,11 @@ def get_gallery_types():
     return artwork_types.get_artwork_types_names()
 
 @router.get("/by-gallery/{gallery_type}", response_model=List[ArtworkInDB])
-def get_artworks_by_gallery(gallery_type: str):
+def get_artworks_by_gallery(gallery_type: str, lang: str = Query("fr")):
     """
     Retourne les œuvres d'un type de galerie spécifique
     """
+    language = resolve_language(lang)
     artworks_data = artworks.get_all_artworks()
     filtered_artworks = []
     # Tolérance d'encodage : décoder + et %XX et gérer double-encodage éventuel
@@ -78,7 +93,7 @@ def get_artworks_by_gallery(gallery_type: str):
         
         # Filtrer seulement par type, pas par statut (afficher toutes les œuvres)
         if normalized_artwork_type == normalized_gallery_type:
-            filtered_artworks.append(serialize_artwork(artwork))
+            filtered_artworks.append(serialize_artwork(artwork, language))
     
     return filtered_artworks
 
@@ -92,11 +107,12 @@ def get_all_gallery_types():
     return artwork_types.get_artwork_types_names()
 
 @router.get("/{artwork_id}", response_model=ArtworkInDB)
-def get_artwork(artwork_id: str):
+def get_artwork(artwork_id: str, lang: str = Query("fr")):
+    language = resolve_language(lang)
     raw = artworks.get_artwork_by_id(artwork_id)
     if not raw:
         raise HTTPException(status_code=404, detail="Artwork not found")
-    return serialize_artwork(raw)
+    return serialize_artwork(raw, language)
 
 @router.post("/", response_model=ArtworkInDB)
 def create_artwork(

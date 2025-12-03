@@ -3,6 +3,8 @@ from app.utils.string_utils import normalize_string
 from bson.objectid import ObjectId
 from app.database import artworks_collection
 
+TRANSLATABLE_FIELDS = {"title", "description", "type", "status"}
+
 def get_all_artworks() -> List[dict]:
     """
     Renvoie la liste de toutes les œuvres.
@@ -49,19 +51,31 @@ def update_artwork(artwork_id: str, update_data: dict) -> int:
     
     # Comparer les données pour voir s'il y a vraiment des changements
     has_changes = False
+    changed_fields = []
     for key, new_value in update_data.items():
         existing_value = existing.get(key)
         if existing_value != new_value:
             has_changes = True
-            break
+            changed_fields.append(key)
     
     # Si aucun changement, retourner 0 sans faire de requête DB
     if not has_changes:
         return 0
     
+    update_payload = {"$set": update_data}
+
+    translations = existing.get("translations", {})
+    unset_fields = {}
+    if translations.get("en"):
+        for field in changed_fields:
+            if field in TRANSLATABLE_FIELDS:
+                unset_fields[f"translations.en.{field}"] = ""
+    if unset_fields:
+        update_payload["$unset"] = unset_fields
+
     result = artworks_collection.update_one(
         {"_id": oid},
-        {"$set": update_data}
+        update_payload
     )
     return result.modified_count
 
