@@ -2,66 +2,70 @@ import json
 import logging
 import os
 from typing import Dict, Iterable, Optional
-
-from openai import OpenAI
+import requests
 
 logger = logging.getLogger(__name__)
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_TRANSLATION_MODEL", "gpt-4o-mini")
+DEEPL_API_KEY = os.getenv("DEEPL_API_KEY", "ed6da66b-e4c8-4073-9b5b-b1c25a9dea60:fx")
+DEEPL_API_URL = "https://api-free.deepl.com/v2/translate"
 
-_client: Optional[OpenAI] = None
-
-if OPENAI_API_KEY:
+def _translate_with_deepl(text: str, target_lang: str = "EN") -> Optional[str]:
+    """
+    Translate text using DeepL API.
+    Returns the translated text or None on failure.
+    """
+    if not text or not DEEPL_API_KEY:
+        return None
+    
     try:
-        _client = OpenAI(api_key=OPENAI_API_KEY)
-        logger.info("OpenAI translation client initialised.")
+        response = requests.post(
+            DEEPL_API_URL,
+            data={
+                "auth_key": DEEPL_API_KEY,
+                "text": text,
+                "target_lang": target_lang.upper(),
+                "source_lang": "FR"
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            if result.get("translations") and len(result["translations"]) > 0:
+                return result["translations"][0]["text"]
+        else:
+            logger.error(f"DeepL API error: {response.status_code} - {response.text}")
     except Exception as exc:
-        logger.error("Failed to initialise OpenAI client: %s", exc)
-        _client = None
-else:
-    logger.warning("OPENAI_API_KEY is not set. Dynamic translations are disabled.")
+        logger.error(f"DeepL translation failed: {exc}")
+    
+    return None
 
 
 def _translate_payload(payload: Dict[str, str], target_language: str) -> Dict[str, str]:
     """
-    Translate a dictionary of strings using the OpenAI API while keeping the JSON structure intact.
+    Translate a dictionary of strings using DeepL API.
+    Note: For manual translation workflow, this is kept for backward compatibility
+    but won't auto-translate descriptions (handled by manual endpoint).
     """
-    if not payload or not _client:
+    if not payload:
         return {}
 
-    prompt = (
-        "Translate the following JSON object from French to {lang}. "
-        "Keep the JSON structure and keys unchanged. "
-        "Return valid JSON only without additional commentary.\n\n{data}"
-    ).format(lang="English" if target_language == "en" else target_language, data=json.dumps(payload, ensure_ascii=False))
-
-    try:
-        completion = _client.chat.completions.create(
-            model=OPENAI_MODEL,
-            temperature=0.2,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a professional translator. Reply with valid JSON only.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-        )
-        content = completion.choices[0].message.content.strip()
-        # Certaines réponses peuvent être entourées de ```json ... ```
-        if content.startswith("```"):
-            content = content.strip("`")
-            if content.lower().startswith("json"):
-                content = content[4:].strip()
-        translated = json.loads(content)
-        if isinstance(translated, dict):
-            return translated
-    except json.JSONDecodeError as exc:
-        logger.error("Failed to decode translation JSON: %s", exc)
-    except Exception as exc:
-        logger.error("OpenAI translation error: %s", exc)
-    return {}
+    translated = {}
+    target_lang_code = "EN" if target_language == "en" else target_language.upper()
+    
+    for key, value in payload.items():
+        if not value or not isinstance(value, str):
+            continue
+        
+        # Skip description and status fields - description is handled manually, status is an enum
+        if key in ["description", "status"]:
+            continue
+            
+        result = _translate_with_deepl(value, target_lang_code)
+        if result:
+            translated[key] = result
+    
+    return translated
 
 
 def apply_dynamic_translations(
@@ -98,8 +102,8 @@ def apply_dynamic_translations(
                         {"_id": document["_id"]},
                         {"$set": {"translations": translations}},
                     )
-        except Exception as exc:
-            logger.error("Failed to persist translations: %s", exc)
+                except Exception as exc:
+                    logger.error("Failed to persist translations: %s", exc)
 
     updated_document = dict(document)
     for field in fields:

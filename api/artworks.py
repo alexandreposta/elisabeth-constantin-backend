@@ -1,20 +1,21 @@
 from fastapi import APIRouter, HTTPException, Request, BackgroundTasks, Query
 from typing import List
-from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest
+from app.models.artwork import Artwork, ArtworkInDB, UpdateTypeRequest, TranslateDescriptionRequest, UpdateDescriptionRequest
 from app.crud import artworks
 from app.utils.string_utils import normalize_string
 from fastapi import Depends
 from api.auth_admin import require_admin_auth
 from app.services.email.notifications import notify_new_artwork, notify_removed_artwork
 from app.database import artworks_collection
-from app.services.translation import apply_dynamic_translations
+from app.services.translation import apply_dynamic_translations, _translate_with_deepl
+from bson import ObjectId
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 SUPPORTED_LANGUAGES = {"fr", "en"}
-TRANSLATABLE_ARTWORK_FIELDS = ("title", "description", "type", "status")
+TRANSLATABLE_ARTWORK_FIELDS = ("title", "type")
 
 
 def resolve_language(lang: str) -> str:
@@ -28,9 +29,19 @@ def serialize_artwork(raw: dict, lang: str = "fr") -> dict:
     Convertit le BSON ObjectId en str pour la sérialisation JSON.
     """
     translated_doc = apply_dynamic_translations(raw, TRANSLATABLE_ARTWORK_FIELDS, lang, artworks_collection)
+    
+    # Handle description manually: use translations.en.description if lang=en
+    description = translated_doc.get("description", "")
+    if lang == "en":
+        translations = translated_doc.get("translations", {})
+        en_translations = translations.get("en", {})
+        if en_translations and "description" in en_translations:
+            description = en_translations["description"]
+    
     result = {
         **translated_doc,
         "_id": str(translated_doc["_id"]),
+        "description": description,
         "other_images": translated_doc.get("other_images", []),
         "status": translated_doc.get("status", "Disponible")
     }
@@ -135,6 +146,97 @@ def create_artwork(
     
     return serialize_artwork(created_doc)
 
+# Déclarer les routes statiques avant '/{artwork_id}' pour éviter les collisions FastAPI
+
+@router.put("/type/update")
+def update_artwork_type(type_request: UpdateTypeRequest, _: bool = Depends(require_admin_auth), request: Request = None):
+    """
+    Met à jour un type d'œuvre dans toutes les œuvres
+    """
+    try:
+        updated_count = artworks.update_artwork_type(type_request.oldType, type_request.newType)
+        return {"success": True, "updated": updated_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/translate-description")
+def translate_description(
+    request: TranslateDescriptionRequest,
+    _: bool = Depends(require_admin_auth)
+):
+    """
+    Traduit la description d'une œuvre en anglais via DeepL et la stocke en DB.
+    Si une traduction existe déjà, elle est écrasée.
+    """
+    try:
+        # Vérifier que l'artwork existe
+        artwork = artworks.get_artwork_by_id(request.artwork_id)
+        if not artwork:
+            raise HTTPException(status_code=404, detail="Artwork not found")
+        
+        # Traduire avec DeepL
+        translated_text = _translate_with_deepl(request.description_fr, "EN")
+        if not translated_text:
+            raise HTTPException(status_code=500, detail="Translation failed")
+        
+        # Sauvegarder en DB dans translations.en.description
+        oid = ObjectId(request.artwork_id)
+        artworks_collection.update_one(
+            {"_id": oid},
+            {
+                "$set": {
+                    "translations.en.description": translated_text
+                }
+            }
+        )
+        
+        logger.info(f"Translated description for artwork {request.artwork_id}")
+        return {
+            "success": True,
+            "description_en": translated_text
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Translation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.put("/update-description-en")
+def update_description_en(
+    request: UpdateDescriptionRequest,
+    _: bool = Depends(require_admin_auth)
+):
+    """
+    Met à jour manuellement la description anglaise d'une œuvre.
+    """
+    try:
+        # Vérifier que l'artwork existe
+        artwork = artworks.get_artwork_by_id(request.artwork_id)
+        if not artwork:
+            raise HTTPException(status_code=404, detail="Artwork not found")
+        
+        # Sauvegarder en DB
+        oid = ObjectId(request.artwork_id)
+        artworks_collection.update_one(
+            {"_id": oid},
+            {
+                "$set": {
+                    "translations.en.description": request.description_en
+                }
+            }
+        )
+        
+        logger.info(f"Updated EN description for artwork {request.artwork_id}")
+        return {
+            "success": True,
+            "description_en": request.description_en
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Update description error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.put("/{artwork_id}", response_model=ArtworkInDB)
 def update_artwork(artwork_id: str, artwork: Artwork, _: bool = Depends(require_admin_auth), request: Request = None):
     # Vérifier d'abord que l'artwork existe
@@ -181,14 +283,3 @@ def delete_artwork(
     logger.info(f"📧 Scheduled newsletter notification for removed artwork: {artwork_id}")
     
     return {"message": "Artwork deleted successfully"}
-
-@router.put("/type/update")
-def update_artwork_type(type_request: UpdateTypeRequest, _: bool = Depends(require_admin_auth), request: Request = None):
-    """
-    Met à jour un type d'œuvre dans toutes les œuvres
-    """
-    try:
-        updated_count = artworks.update_artwork_type(type_request.oldType, type_request.newType)
-        return {"success": True, "updated": updated_count}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))

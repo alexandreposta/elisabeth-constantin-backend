@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 from enum import Enum
 
 class ArtworkStatus(str, Enum):
@@ -20,6 +20,7 @@ class Artwork(BaseModel):
 
 class ArtworkInDB(Artwork):
     id: str = Field(..., alias="_id")
+    translations: Optional[Dict[str, Dict[str, str]]] = None
     
     class Config:
         populate_by_name = True
@@ -27,3 +28,11 @@ class ArtworkInDB(Artwork):
 class UpdateTypeRequest(BaseModel):
     oldType: str
     newType: str
+
+class TranslateDescriptionRequest(BaseModel):
+    artwork_id: str
+    description_fr: str
+
+class UpdateDescriptionRequest(BaseModel):
+    artwork_id: str
+    description_en: str
